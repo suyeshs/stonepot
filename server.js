@@ -145,9 +145,28 @@ const server = Bun.serve({
               }
             });
           }
+
+          // Return 404 for missing static files (like favicon.ico)
+          if (path.includes('.')) {
+            console.log('[Static] Returning 404 for missing file:', path);
+            return new Response('File not found', {
+              status: 404,
+              headers: {
+                'Content-Type': 'text/plain',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
         }
       } catch (error) {
         console.error('[Static] Error serving file:', error);
+        return new Response('Internal server error', {
+          status: 500,
+          headers: {
+            'Content-Type': 'text/plain',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
       }
     }
     
