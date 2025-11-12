@@ -1,0 +1,47 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/stonepot-backend:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/stonepot-backend:latest'
+      - '.'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/stonepot-backend:$BUILD_ID'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/stonepot-backend:latest'
+
+  # Deploy to Cloud Run
+  # Using --quiet to skip confirmation and keeping existing configuration
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'stonepot-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/stonepot-backend:$BUILD_ID'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--quiet'
+
+images:
+  - 'gcr.io/$PROJECT_ID/stonepot-backend:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/stonepot-backend:latest'
+
+timeout: '1200s'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
