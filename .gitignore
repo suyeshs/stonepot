@@ -69,3 +69,5 @@ yarn-error.log*
 .turbo
 .vercel
 .docusaurus
+.DS_Store
+public_old_backup/
