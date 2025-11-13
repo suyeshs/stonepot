@@ -152,16 +152,21 @@ export default function Home() {
       await vertexAILiveServiceRef.current.connect(selectedLanguage, userId);
       console.log('[VertexAILive] Connected successfully with userId:', userId);
 
+      // CRITICAL: Set session active BEFORE any other operations
+      console.log('[VertexAILive] Setting session active...');
       setIsSessionActive(true);
+      console.log('[VertexAILive] Session active state set to TRUE');
 
       // Start idle animation for listening state
+      console.log('[VertexAILive] Starting idle animation...');
       startIdleAnimation();
 
-      console.log('[VertexAILive] Session started');
+      console.log('[VertexAILive] ✅ Session started successfully');
     } catch (error: any) {
-      console.error('[VertexAILive] Failed:', error);
+      console.error('[VertexAILive] ❌ Failed:', error);
       alert('Failed to start session: ' + error.message);
       setSessionStatus('idle');
+      setIsSessionActive(false); // Ensure we reset to start screen
     }
   };
 
