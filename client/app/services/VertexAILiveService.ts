@@ -76,11 +76,14 @@ export class VertexAILiveService {
             if (message.type === 'session_started') {
               this.sessionId = message.sessionId;
               console.log('[VertexAILive] Session started:', this.sessionId);
+              // Resolve immediately on session_started (don't wait for session_ready)
+              // This allows the UI to show even if Vertex AI setup is incomplete
+              resolve();
             }
 
             if (message.type === 'session_ready') {
-              console.log('[VertexAILive] Session ready');
-              resolve();
+              console.log('[VertexAILive] Session ready (Vertex AI connected)');
+              // Already resolved, this is just confirmation
             }
 
             if (message.type === 'error') {
