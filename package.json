@@ -1,7 +1,7 @@
 {
-  "name": "vaakya",
+  "name": "stonepot",
   "version": "2.0.0",
-  "description": "Vaakya Voice Agent API - Powered by Sahamati Labs",
+  "description": "Stonepot Voice Agent API - Powered by Sahamati Labs",
   "main": "server.js",
   "scripts": {
     "start": "bun run server.js",

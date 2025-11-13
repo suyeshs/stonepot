@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vaakya Voice AI - React Client",
+  title: "Stonepot Voice AI - React Client",
   description: "Voice assistant with STT-TTS pipeline and Silero VAD",
 };
 

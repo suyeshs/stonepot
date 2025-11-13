@@ -1,5 +1,5 @@
 /**
- * Vaakya Voice Chat API - Powered by Bun
+ * Stonepot Voice Chat API - Powered by Bun
  * High-performance backend with native WebSocket support
  */
 
@@ -240,7 +240,7 @@ const server = Bun.serve({
     // API status endpoint
     if (path === '/api/status') {
       return Response.json({
-        message: 'Vaakya Voice Chat API - Powered by Bun ⚡',
+        message: 'Stonepot Voice Chat API - Powered by Bun ⚡',
         runtime: 'bun',
         version: Bun.version,
         timestamp: new Date().toISOString(),
@@ -1745,7 +1745,7 @@ const server = Bun.serve({
 });
 
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('🚀 Vaakya API Server - Powered by Bun ⚡');
+console.log('🚀 Stonepot API Server - Powered by Bun ⚡');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log(`📍 API URL: http://localhost:${PORT}`);
 console.log(`🌐 Client URL: http://localhost:${PORT}/`);
