@@ -34,7 +34,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --min-instances 1 \
   --max-instances 10 \
   --session-affinity \
-    --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},NODE_ENV=production,GEMINI_LIVE_MODEL=gemini-2.0-flash-exp,GOOGLE_API_KEY=AIzaSyBEVePQ537z-ZhQshl4PegISlyST87YMsE,GOOGLE_CLOUD_PROJECT_ID=${PROJECT_ID},VERTEX_AI_LOCATION=${REGION},VERTEX_AI_MODEL=gemini-2.0-flash-lite,VERTEX_AI_LIVE_MODEL=gemini-2.0-flash-exp,VERTEX_AI_VOICE_NAME=Kore" \
+    --set-env-vars "PROJECT_ID=${PROJECT_ID},LOCATION=${REGION},NODE_ENV=production,GEMINI_LIVE_MODEL=gemini-live-2.5-flash-preview-native-audio-09-2025,GOOGLE_API_KEY=AIzaSyBEVePQ537z-ZhQshl4PegISlyST87YMsE,GOOGLE_CLOUD_PROJECT_ID=${PROJECT_ID},VERTEX_AI_LOCATION=${REGION},VERTEX_AI_MODEL=gemini-2.0-flash-lite,VERTEX_AI_LIVE_MODEL=gemini-2.0-flash-live-preview-04-09,VERTEX_AI_VOICE_NAME=Kore" \
   --port 8080
 
 # Get service URL
