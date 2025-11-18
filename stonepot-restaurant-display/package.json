@@ -1,0 +1,19 @@
+{
+  "name": "stonepot-restaurant-display",
+  "version": "1.0.0",
+  "description": "Cloudflare Durable Objects WebSocket server for real-time multimodal display",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "capnweb": "^0.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.91.0"
+  }
+}

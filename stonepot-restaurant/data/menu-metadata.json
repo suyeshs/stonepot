@@ -1,0 +1,84 @@
+{
+  "generated": "2025-11-16T07:13:56.082Z",
+  "source": "TCFC Menu.xlsx",
+  "schema": {
+    "jsonl": {
+      "description": "JSONL format for Vertex AI RAG ingestion",
+      "fields": {
+        "id": "string - unique identifier",
+        "type": "string - item type (appetizer, main, curry, dessert, beverage, soup, combo)",
+        "name": "string - dish name",
+        "description": "string - dish description",
+        "variantPrice": "number - smaller portion price",
+        "fullPrice": "number - larger portion price (optional)",
+        "imageId": "string - image identifier",
+        "imageUrl": "string - full image URL",
+        "category": "string - menu category",
+        "dietary": "array - dietary tags (vegetarian, non-veg, spicy)",
+        "allergens": "array - allergen information",
+        "spiceLevel": "number - spice level (1-5)",
+        "tags": "array - searchable tags",
+        "searchText": "string - concatenated searchable content",
+        "available": "boolean - availability status"
+      }
+    },
+    "hierarchical": {
+      "description": "Hierarchical JSON for client display",
+      "structure": "categories array with nested items, separate combos array"
+    }
+  },
+  "statistics": {
+    "totalItems": 55,
+    "totalCombos": 7,
+    "categoryBreakdown": {
+      "APPETIZERS": {
+        "count": 24,
+        "avgPrice": 340,
+        "priceRange": {
+          "min": 195,
+          "max": 750
+        }
+      },
+      "OTTIS, PUTTUS AND RICE": {
+        "count": 8,
+        "avgPrice": 102,
+        "priceRange": {
+          "min": 35,
+          "max": 190
+        }
+      },
+      "CURRIES": {
+        "count": 8,
+        "avgPrice": 258,
+        "priceRange": {
+          "min": 190,
+          "max": 380
+        }
+      },
+      "DESSERTS": {
+        "count": 6,
+        "avgPrice": 123,
+        "priceRange": {
+          "min": 85,
+          "max": 200
+        }
+      },
+      "COOLERS": {
+        "count": 6,
+        "avgPrice": 98,
+        "priceRange": {
+          "min": 90,
+          "max": 100
+        }
+      },
+      "SOUPS": {
+        "count": 3,
+        "avgPrice": 133,
+        "priceRange": {
+          "min": 95,
+          "max": 185
+        }
+      }
+    }
+  }
+}

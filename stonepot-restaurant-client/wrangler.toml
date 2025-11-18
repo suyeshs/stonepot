@@ -1,0 +1,29 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "stonepot-restaurant-client"
+main = ".open-next/worker.js"
+compatibility_date = "2024-11-14"
+compatibility_flags = ["nodejs_compat"]
+account_id = "0f3287b287060e3215662501ee96292e"
+
+# Assets binding for static files
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+# Environment variables
+[vars]
+NEXT_PUBLIC_WORKER_URL = "https://stonepot-restaurant-display.suyesh.workers.dev"
+NEXT_PUBLIC_API_URL = "https://stonepot-restaurant-334610188311.us-central1.run.app"
+
+# Durable Objects for OpenNext
+[[durable_objects.bindings]]
+name = "DOQueue"
+class_name = "DOQueueHandler"
+script_name = "stonepot-restaurant-client"
+
+[[durable_objects.bindings]]
+name = "DOShardedTagCache"
+class_name = "DOShardedTagCache"
+script_name = "stonepot-restaurant-client"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["DOQueueHandler", "DOShardedTagCache"]

@@ -53,6 +53,11 @@ coverage/
 service-account-key.json
 *-key.json
 
+# Credentials directory (keep structure, ignore sensitive files)
+credentials/*
+!credentials/.gitkeep
+!credentials/README.md
+
 # Firebase
 firebase-debug.log
 firestore-debug.log
@@ -64,6 +69,11 @@ firestore-debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Cloudflare
+.wrangler/
+.dev.vars
+wrangler.toml.local
 
 # Misc
 .turbo

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Environment files (use Cloud Run env vars instead)
+.env
+.env.*
+
+# Development files
+*.log
+npm-debug.log*
+.DS_Store
+
+# Version control
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Tests
+**/*.test.js
+**/__tests__/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

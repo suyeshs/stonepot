@@ -1,0 +1,47 @@
+name = "stonepot-restaurant-display"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "0f3287b287060e3215662501ee96292e"
+
+[[durable_objects.bindings]]
+name = "SESSION_MANAGER"
+class_name = "SessionManager"
+
+[[durable_objects.bindings]]
+name = "RPC_SESSION_MANAGER"
+class_name = "RpcSessionManager"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SessionManager"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RpcSessionManager"]
+
+# D1 Database for structured data (menu items, orders)
+# Uncomment and configure after creating D1 database
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "restaurant-sessions"
+# database_id = "your-d1-database-id"
+
+# R2 Storage for menu images
+# Uncomment and configure after creating R2 bucket
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "restaurant-menu-images"
+
+# KV for tenant configuration caching
+# Uncomment and configure after creating KV namespace
+# [[kv_namespaces]]
+# binding = "TENANT_CONFIG"
+# id = "your-kv-namespace-id"
+
+[vars]
+ALLOWED_ORIGINS = "http://localhost:3000,https://stonepot-restaurant-client.suyesh.workers.dev"
+BACKEND_URL = "https://stonepot-restaurant-334610188311.us-central1.run.app"
+
+# Secrets (set with: wrangler secret put <NAME>)
+# AUTH_SECRET - Authentication token for Bun server

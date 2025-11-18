@@ -1,0 +1,1376 @@
+{
+  "lastUpdated": "2025-11-16T07:13:56.082Z",
+  "restaurant": "The Coorg Flavours Company",
+  "version": "1.0",
+  "categories": [
+    {
+      "id": "appetizers",
+      "name": "APPETIZERS",
+      "description": "Traditional Coorg starters",
+      "displayOrder": 1,
+      "items": [
+        {
+          "id": "appetizers-001",
+          "type": "appetizer",
+          "name": "Thith Pandi (Fire pork)",
+          "description": "Extra spicy fire pork fry with birds eye chilly",
+          "variantPrice": 335,
+          "fullPrice": null,
+          "imageId": "5940",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5940/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 5,
+          "tags": [
+            "pork",
+            "fried"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-002",
+          "type": "appetizer",
+          "name": "Mutton Chops",
+          "description": "Succulent chops infused with the coorg masalas and kachumpuli",
+          "variantPrice": 299,
+          "fullPrice": 495,
+          "imageId": "5943",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5943/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton",
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-003",
+          "type": "appetizer",
+          "name": "Veg Cutlets (V)",
+          "description": "Small patties made with a combination of Seasonal vegetables",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": "5896",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5896/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "vegetables"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-004",
+          "type": "appetizer",
+          "name": "Pandhi Bharthad",
+          "description": "Slow cooked boneless pork fry in traditional black masala",
+          "variantPrice": 290,
+          "fullPrice": null,
+          "imageId": "5917",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5917/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "fried",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-005",
+          "type": "appetizer",
+          "name": "Bale Kai Fry (V)",
+          "description": "Tangy Raw Banana Fritters",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": "5892",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5892/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "fried"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-006",
+          "type": "appetizer",
+          "name": "Kaipake Fry (V)",
+          "description": "Tangy Bitter Gourd fried seasoned with lime and chilly",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": "5899",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5899/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "vegetarian",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "fried"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-007",
+          "type": "appetizer",
+          "name": "Crispy Bhendi Fry (V)",
+          "description": "Ladies finger batter fried to a crisp with spices",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": "5886",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5886/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "fried"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-008",
+          "type": "appetizer",
+          "name": "Kadle Palya (V)",
+          "description": "Steamed Black Channa seasoned in spices",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": "5903",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5903/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "appetizers-009",
+          "type": "appetizer",
+          "name": "Spicy Smoked Chicken",
+          "description": "Smokey flavoured chicken in traditional spices",
+          "variantPrice": 295,
+          "fullPrice": null,
+          "imageId": "5911",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5911/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-010",
+          "type": "appetizer",
+          "name": "Onake Erachi (Spicy Smoked Pork)",
+          "description": "Traditional smoke dried pork",
+          "variantPrice": 385,
+          "fullPrice": null,
+          "imageId": "5957",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5957/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-011",
+          "type": "appetizer",
+          "name": "Kaima Unde Bharthad",
+          "description": "Mutton meat ball fry tossed in curry leaves and chilly",
+          "variantPrice": 290,
+          "fullPrice": null,
+          "imageId": "5935",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5935/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton",
+            "fried",
+            "curry"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-012",
+          "type": "appetizer",
+          "name": "Pandhi Chops ( Pork Chops )",
+          "description": "Traditionally inspired pork chops in a subtle blend of spices",
+          "variantPrice": 285,
+          "fullPrice": 485,
+          "imageId": "5923",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5923/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-013",
+          "type": "appetizer",
+          "name": "Chicken Cutlets",
+          "description": "Mildly spiced soft chicken cutlets ( 4 pcs )",
+          "variantPrice": 290,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 1,
+          "tags": [
+            "chicken"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-014",
+          "type": "appetizer",
+          "name": "Mutton Pepper fry",
+          "description": "Mutton roasted in fresh pepper sourced from our estates in coorg",
+          "variantPrice": 325,
+          "fullPrice": null,
+          "imageId": "5954",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5954/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton",
+            "fried",
+            "roasted",
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-015",
+          "type": "appetizer",
+          "name": "Pork Wrap",
+          "description": "Our signature black masala pork wrapped in mini Akki Ottis",
+          "variantPrice": 295,
+          "fullPrice": null,
+          "imageId": "5966",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5966/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "otti"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-016",
+          "type": "appetizer",
+          "name": "Pork Lovers Platter",
+          "description": "An assortment of all our best pork starters",
+          "variantPrice": 700,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-017",
+          "type": "appetizer",
+          "name": "Pork pepper sausages",
+          "description": "Our take on Bangalores favourite Pork Sausages",
+          "variantPrice": 299,
+          "fullPrice": null,
+          "imageId": "5960",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5960/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-018",
+          "type": "appetizer",
+          "name": "Chicken Platter",
+          "description": "An assortment of all our Chicken starters",
+          "variantPrice": 555,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-019",
+          "type": "appetizer",
+          "name": "Cutlet Platter",
+          "description": "A variety of veg/Chicken/Mutton/Pork/Fish cutlets",
+          "variantPrice": 565,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken",
+            "pork",
+            "mutton",
+            "fish"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-020",
+          "type": "appetizer",
+          "name": "Classic Meat Platter",
+          "description": "A variety of Chicken, Mutton, Pork starters",
+          "variantPrice": 750,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken",
+            "pork",
+            "mutton"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-021",
+          "type": "appetizer",
+          "name": "Pork pepper fry",
+          "description": "Juicy succulent bites tossed with robust pepper from our estates",
+          "variantPrice": 280,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "fried"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-022",
+          "type": "appetizer",
+          "name": "Chilly Pork",
+          "description": "Our take on Coorgs popular Chilly pork, which is tossed with crunchy onions n capsicum",
+          "variantPrice": 350,
+          "fullPrice": null,
+          "imageId": "5947",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5947/public",
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg",
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-023",
+          "type": "appetizer",
+          "name": "Mutton Cutlets",
+          "description": "",
+          "variantPrice": 295,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton"
+          ],
+          "available": true
+        },
+        {
+          "id": "appetizers-024",
+          "type": "appetizer",
+          "name": "Fish Cutlets",
+          "description": "",
+          "variantPrice": 295,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "APPETIZERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "fish"
+          ],
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "rice-dishes",
+      "name": "OTTIS, PUTTUS AND RICE",
+      "description": "Rice and traditional Coorg flatbreads",
+      "displayOrder": 2,
+      "items": [
+        {
+          "id": "rice-dishes-001",
+          "type": "main",
+          "name": "Paputtu",
+          "description": "Steamed rice cakes with flavoured with coconut and cardamom",
+          "variantPrice": 77,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice",
+            "puttu"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-002",
+          "type": "main",
+          "name": "Kadambuttu",
+          "description": "Soft steamed rice dumplings",
+          "variantPrice": 77,
+          "fullPrice": null,
+          "imageId": "5988",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5988/public",
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-003",
+          "type": "main",
+          "name": "Noolputtu",
+          "description": "Rice string hoppers",
+          "variantPrice": 77,
+          "fullPrice": null,
+          "imageId": "5994",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5994/public",
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice",
+            "puttu"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-004",
+          "type": "main",
+          "name": "Akki Otti",
+          "description": "Traditional Rice Roti",
+          "variantPrice": 35,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice",
+            "otti",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-005",
+          "type": "main",
+          "name": "Ney Kulu",
+          "description": "Ghee rice made the traditional way",
+          "variantPrice": 190,
+          "fullPrice": null,
+          "imageId": "6012",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6012/public",
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-006",
+          "type": "main",
+          "name": "Puttu Platter",
+          "description": "A combination of puttus like noolputtu, paaputtu and kadambuttu",
+          "variantPrice": 190,
+          "fullPrice": null,
+          "imageId": "5984",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5984/public",
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "puttu"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-007",
+          "type": "main",
+          "name": "Steamed Rice",
+          "description": "",
+          "variantPrice": 90,
+          "fullPrice": null,
+          "imageId": "6024",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6024/public",
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice"
+          ],
+          "available": true
+        },
+        {
+          "id": "rice-dishes-008",
+          "type": "main",
+          "name": "Sannas",
+          "description": "Soft and spongy rice idilis",
+          "variantPrice": 77,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "OTTIS, PUTTUS AND RICE",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "rice"
+          ],
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "curries",
+      "name": "CURRIES",
+      "description": "Authentic Coorg curries",
+      "displayOrder": 3,
+      "items": [
+        {
+          "id": "curries-001",
+          "type": "curry",
+          "name": "Erachi Curry",
+          "description": "Flavourful Kodava mutton curry",
+          "variantPrice": 380,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton",
+            "curry",
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-002",
+          "type": "curry",
+          "name": "Kodava Koli Curry",
+          "description": "Chicken curry with a coconut gravy",
+          "variantPrice": 275,
+          "fullPrice": null,
+          "imageId": "5982",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5982/public",
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken",
+            "curry",
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-003",
+          "type": "curry",
+          "name": "Pandhi Curry",
+          "description": "Pork curry with the traditional black masala",
+          "variantPrice": 285,
+          "fullPrice": null,
+          "imageId": "5980",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5980/public",
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "pork",
+            "curry",
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-004",
+          "type": "curry",
+          "name": "Kutu Curry (V)",
+          "description": "Mixed veg curry in mildly spiced coconut gravy",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 1,
+          "tags": [
+            "curry"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-005",
+          "type": "curry",
+          "name": "Kadle Curry (V)",
+          "description": "Black channa in cocount based gravy",
+          "variantPrice": 195,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "vegetarian"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "curry"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-006",
+          "type": "curry",
+          "name": "Mutte Curry",
+          "description": "Egg curry in a light coconut gravy",
+          "variantPrice": 190,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "egg",
+            "curry"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-007",
+          "type": "curry",
+          "name": "Mange curry",
+          "description": "Seasonal dish-kindly check with us for availibility",
+          "variantPrice": 280,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "curry"
+          ],
+          "available": true
+        },
+        {
+          "id": "curries-008",
+          "type": "curry",
+          "name": "Baimbale Curry ( Bambooshoot )",
+          "description": "Seasonal dish-kindly check with us for availability",
+          "variantPrice": 265,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "CURRIES",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "curry"
+          ],
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "desserts",
+      "name": "DESSERTS",
+      "description": "Sweet treats to end your meal",
+      "displayOrder": 4,
+      "items": [
+        {
+          "id": "desserts-001",
+          "type": "dessert",
+          "name": "Khus Khus Paysa",
+          "description": "Kodava paysa made with poppy seeds and coconut",
+          "variantPrice": 85,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "coorg"
+          ],
+          "available": true
+        },
+        {
+          "id": "desserts-002",
+          "type": "dessert",
+          "name": "Tender Coconut Pudding",
+          "description": "A unique pudding made with fresh tender coconut",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": "6021",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6021/public",
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "desserts-003",
+          "type": "dessert",
+          "name": "Seasonal Fruit Mascarpone",
+          "description": "A layered dessert made with stewed fruit of the season strawberries, mango, grape etc mascarpone and a biscuit base",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "desserts-004",
+          "type": "dessert",
+          "name": "Dessert Platter",
+          "description": "",
+          "variantPrice": 200,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "desserts-005",
+          "type": "dessert",
+          "name": "Lazy Daisy Cake",
+          "description": "",
+          "variantPrice": 150,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "desserts-006",
+          "type": "dessert",
+          "name": "Chocolate Browne",
+          "description": "",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "DESSERTS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "beverages",
+      "name": "COOLERS",
+      "description": "Refreshing drinks",
+      "displayOrder": 5,
+      "items": [
+        {
+          "id": "beverages-001",
+          "type": "beverage",
+          "name": "Passion Fruit Fizz",
+          "description": "A complex flavour of sweetness and zing",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "beverages-002",
+          "type": "beverage",
+          "name": "Lemon Shock",
+          "description": "A refresing bolt of lime and bird's eye chilly",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "spicy"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "beverages-003",
+          "type": "beverage",
+          "name": "Strawberry Lemonade",
+          "description": "Strawberry and lemoande medely",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "beverages-004",
+          "type": "beverage",
+          "name": "Buttermilk",
+          "description": "Traditional summer cooler with fresh herbs and spices",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "beverages-005",
+          "type": "beverage",
+          "name": "Kokum Juice",
+          "description": "Refreshing and Healthy juice with antioxidant properties",
+          "variantPrice": 100,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        },
+        {
+          "id": "beverages-006",
+          "type": "beverage",
+          "name": "Masala Coke / Sprite",
+          "description": "Coca cola or Sprite spiced with a secret spice mix",
+          "variantPrice": 90,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "COOLERS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [],
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "soups",
+      "name": "SOUPS",
+      "description": "Warm and comforting soups",
+      "displayOrder": 6,
+      "items": [
+        {
+          "id": "soups-001",
+          "type": "soup",
+          "name": "Malu Kanni",
+          "description": "A traditional drink made from shade grown pepper and 5 other robust spices and a tinge of Afghani hing",
+          "variantPrice": 95,
+          "fullPrice": null,
+          "imageId": "5880",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5880/public",
+          "category": "SOUPS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "traditional"
+          ],
+          "available": true
+        },
+        {
+          "id": "soups-002",
+          "type": "soup",
+          "name": "Mutton Paya soup",
+          "description": "Tender Mutton Trotters with a light spice seasoning",
+          "variantPrice": 185,
+          "fullPrice": null,
+          "imageId": "5882",
+          "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5882/public",
+          "category": "SOUPS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "mutton"
+          ],
+          "available": true
+        },
+        {
+          "id": "soups-003",
+          "type": "soup",
+          "name": "Chicken Soup",
+          "description": "",
+          "variantPrice": 120,
+          "fullPrice": null,
+          "imageId": null,
+          "imageUrl": null,
+          "category": "SOUPS",
+          "dietary": [
+            "non-veg"
+          ],
+          "allergens": [],
+          "spiceLevel": 2,
+          "tags": [
+            "chicken"
+          ],
+          "available": true
+        }
+      ]
+    }
+  ],
+  "combos": [
+    {
+      "id": "combo-001",
+      "type": "combo",
+      "name": "Veg Curry Combo",
+      "description": "Puttus , Otti or Rice of your choice - serves One",
+      "curryOptions": [
+        "Kutu curry",
+        "Kadle curry"
+      ],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 199,
+      "imageId": "5998",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/5998/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-002",
+      "type": "combo",
+      "name": "Veg Curry Combo",
+      "description": "Puttus , Otti or Rice of your choice - serves One",
+      "curryOptions": [
+        "Bimballe curry"
+      ],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 199,
+      "imageId": "6015",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6015/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-003",
+      "type": "combo",
+      "name": "Mutte Curry Combo",
+      "description": "",
+      "curryOptions": [],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 215,
+      "imageId": "6010",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6010/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-004",
+      "type": "combo",
+      "name": "Pandi Curry Combo",
+      "description": "Choose anyone Puttu / Rice of your choice",
+      "curryOptions": [],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 255,
+      "imageId": "6007",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6007/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-005",
+      "type": "combo",
+      "name": "Koli Curry Combo",
+      "description": "Choose anyone Puttu / Rice of your choice",
+      "curryOptions": [
+        "Chicken"
+      ],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 250,
+      "imageId": "6005",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6005/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-006",
+      "type": "combo",
+      "name": "Erachi Curry Combo",
+      "description": "Choose anyone Puttu / Rice of your choice",
+      "curryOptions": [
+        "Mutton"
+      ],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 305,
+      "imageId": "6003",
+      "imageUrl": "https://imagedelivery.net/YOUR_ACCOUNT_HASH/6003/public",
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    },
+    {
+      "id": "combo-007",
+      "type": "combo",
+      "name": "Kaima Curry combo",
+      "description": "Choose any one puttu / Rice",
+      "curryOptions": [],
+      "sideOptions": [
+        "Paputtu",
+        "Kadambuttu",
+        "Noolputtu",
+        "Akki Otti",
+        "Ney Kulu",
+        "Steamed Rice"
+      ],
+      "price": 300,
+      "imageId": null,
+      "imageUrl": null,
+      "dietary": [
+        "non-veg"
+      ],
+      "allergens": [],
+      "tags": [
+        "combo",
+        "meal"
+      ],
+      "available": true
+    }
+  ],
+  "metadata": {
+    "totalItems": 55,
+    "totalCombos": 7,
+    "categoriesCount": 6
+  }
+}

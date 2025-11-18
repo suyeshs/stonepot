@@ -1,0 +1,1 @@
+export { handler } from "./stonepot-restaurant-client/index.mjs";
