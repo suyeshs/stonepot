@@ -55,15 +55,15 @@ export function VoiceMenuItemCard({ data, onAction }: VoiceMenuItemCardProps) {
         <div className="flex items-center gap-3">
           {data.rating && (
             <div className="flex items-center gap-1">
-              <span className="text-yellow-500">⭐</span>
+              <span className="text-warning">⭐</span>
               <span className="font-semibold neu-text">{data.rating.toFixed(1)}</span>
             </div>
           )}
           {data.type && (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
               data.type === 'veg'
-                ? 'bg-green-100 text-green-700 border border-green-300'
-                : 'bg-red-100 text-red-700 border border-red-300'
+                ? 'bg-veg-light text-veg-dark border border-veg'
+                : 'bg-non-veg-light text-non-veg-dark border border-non-veg'
             }`}>
               {data.type === 'veg' ? '🌱 Veg' : '🍖 Non-Veg'}
             </span>
@@ -96,7 +96,7 @@ export function VoiceMenuItemCard({ data, onAction }: VoiceMenuItemCardProps) {
           </div>
         )}
 
-        {/* Add to Cart Button */}
+        {/* Add to Order Button */}
         <button
           onClick={handleAddToCart}
           disabled={data.available === false}
@@ -104,7 +104,7 @@ export function VoiceMenuItemCard({ data, onAction }: VoiceMenuItemCardProps) {
             data.available === false ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {data.available === false ? 'Not Available' : `Add to Cart • ₹${data.price}`}
+          {data.available === false ? 'Not Available' : `Add to Order • ₹${data.price}`}
         </button>
       </div>
     </div>

@@ -47,7 +47,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, highlighted }) => {
     <div
       ref={cardRef}
       className={`neu-card overflow-hidden hover-lift transition-all duration-300 ${
-        isHighlighted ? 'ring-4 ring-blue-400 shadow-2xl' : ''
+        isHighlighted ? 'ring-4 ring-voice-listening shadow-2xl' : ''
       }`}
     >
       {/* Image */}
@@ -59,7 +59,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, highlighted }) => {
             className="w-full h-full object-cover"
           />
           {item.isBestseller && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+            <div className="absolute top-4 left-4 bg-error text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
               <span>🔥</span>
               <span>Bestseller</span>
             </div>
@@ -87,10 +87,10 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, highlighted }) => {
               )}
             </div>
           )}
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
             item.type === 'veg'
-              ? 'bg-green-100 text-green-700 border border-green-300'
-              : 'bg-red-100 text-red-700 border border-red-300'
+              ? 'bg-veg-light text-veg-dark border-veg'
+              : 'bg-non-veg-light text-non-veg-dark border-non-veg'
           }`}>
             {item.type === 'veg' ? '🌱 Veg' : '🍖 Non-Veg'}
           </span>
@@ -101,7 +101,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, highlighted }) => {
           {item.description}
         </p>
 
-        {/* Add to Cart / Quantity Control */}
+        {/* Add to Order / Quantity Control */}
         {quantity === 0 ? (
           <button
             onClick={handleAddToCart}
@@ -110,7 +110,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, highlighted }) => {
               item.available === false ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {item.available === false ? 'Not Available' : `Add to Cart • ₹${item.price}`}
+            {item.available === false ? 'Not Available' : `Add to Order • ₹${item.price}`}
           </button>
         ) : (
           <div className="flex items-center justify-between">

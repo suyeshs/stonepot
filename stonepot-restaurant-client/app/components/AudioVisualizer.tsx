@@ -45,18 +45,20 @@ export const AudioVisualizer = ({
     return circles;
   }, [audioLevels, sessionStatus]);
 
-  // Color scheme based on status
+  // Color scheme based on status - uses CSS variables from theme
   const getCircleColor = (index: number, level: number) => {
+    // Get theme colors from CSS variables
+    const thinkingColor = getComputedStyle(document.documentElement).getPropertyValue('--color-voice-thinking').trim();
+    const listeningColor = getComputedStyle(document.documentElement).getPropertyValue('--color-voice-listening').trim();
+
     if (sessionStatus === 'thinking') {
-      // Orange to amber gradient
-      const hue = 30 + (index / numCircles) * 30;
+      // Use thinking color with varying opacity
       const opacity = 0.4 + level * 0.6;
-      return `hsla(${hue}, 80%, 60%, ${opacity})`;
+      return thinkingColor.replace('rgb', 'rgba').replace(')', `, ${opacity})`);
     } else {
-      // Cyan to blue gradient
-      const hue = 180 + (index / numCircles) * 60;
+      // Use listening color with varying opacity
       const opacity = 0.4 + level * 0.6;
-      return `hsla(${hue}, 70%, 60%, ${opacity})`;
+      return listeningColor.replace('rgb', 'rgba').replace(')', `, ${opacity})`);
     }
   };
 
@@ -67,11 +69,13 @@ export const AudioVisualizer = ({
         <div className="relative w-80 h-80">
           {/* Glow effect - changes color based on state */}
           <div
-            className={`absolute inset-0 rounded-full blur-xl transition-colors duration-500 ${
-              sessionStatus === 'thinking'
-                ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/20'
-                : 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20'
-            }`}
+            className="absolute inset-0 rounded-full blur-xl transition-colors duration-slow"
+            style={{
+              background: sessionStatus === 'thinking'
+                ? 'radial-gradient(circle, var(--color-voice-thinking) 0%, transparent 70%)'
+                : 'radial-gradient(circle, var(--color-voice-listening) 0%, transparent 70%)',
+              opacity: 0.2
+            }}
           ></div>
 
           {/* SVG for efficient rendering */}

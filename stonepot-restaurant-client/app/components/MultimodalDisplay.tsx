@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { VoiceMenuItemCard } from './VoiceMenuItemCard';
 import { VoiceComboCard } from './VoiceComboCard';
+import { PaymentPending } from './displays/PaymentPending';
+import { CheckoutSummaryDisplay } from './displays/CheckoutSummaryDisplay';
+import { OrderConfirmed } from './displays/OrderConfirmed';
+import { AddressVerification as AddressVerificationDisplay } from './displays/AddressVerification';
 
 interface MultimodalDisplayProps {
   visualData: any;
@@ -41,6 +45,18 @@ export function MultimodalDisplay({ visualData, onAction }: MultimodalDisplayPro
 
     case 'confirmation':
       return <Confirmation data={displayData} />;
+
+    case 'address_verification':
+      return <AddressVerificationDisplay data={displayData} />;
+
+    case 'checkout_summary':
+      return <CheckoutSummaryDisplay data={displayData} />;
+
+    case 'payment_pending':
+      return <PaymentPending data={displayData} />;
+
+    case 'order_confirmed':
+      return <OrderConfirmed data={displayData} />;
 
     case 'webpage':
       return <WebPage url={displayData?.url} />;
@@ -89,7 +105,7 @@ function DishCard({ data, onAction }: DishCardProps) {
 
   const renderSpiceLevel = (level: number) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={i < level ? 'text-red-400' : 'opacity-30'}>
+      <span key={i} className={i < level ? 'text-error/70' : 'opacity-30'}>
         🌶️
       </span>
     ));
@@ -158,12 +174,12 @@ function DishCard({ data, onAction }: DishCardProps) {
           </div>
         </div>
 
-        {/* Add to Cart Button */}
+        {/* Add to Order Button */}
         <button
           onClick={handleAddToCart}
           className="w-full neu-button-accent rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200 transform hover:-translate-y-0.5"
         >
-          Add to Cart • ₹{data.price * quantity}
+          Add to Order • ₹{data.price * quantity}
         </button>
       </div>
     </div>
@@ -188,7 +204,7 @@ interface CartItemAddedProps {
 
 function CartItemAdded({ data }: CartItemAddedProps) {
   return (
-    <div className="neu-card animate-fade-in border-l-4 border-green-500">
+    <div className="neu-card animate-fade-in border-l-4 border-success">
       <div className="flex items-start gap-3 p-4">
         <div className="text-2xl">✅</div>
         <div className="flex-1">
@@ -229,7 +245,7 @@ function OrderSummary({ data, onAction }: OrderSummaryProps) {
   if (!data || !data.items || data.items.length === 0) {
     return (
       <div className="text-center neu-text-secondary py-8">
-        <p className="text-sm">Your cart is empty</p>
+        <p className="text-sm">Your order is empty</p>
       </div>
     );
   }
@@ -283,7 +299,7 @@ function OrderSummary({ data, onAction }: OrderSummaryProps) {
                 <div className="font-bold neu-text">₹{item.itemTotal}</div>
                 <button
                   onClick={() => handleRemoveItem(item.id)}
-                  className="text-xs text-red-500 hover:text-red-700 mt-2 transition-colors font-medium"
+                  className="text-xs text-error hover:text-error/80 mt-2 transition-colors font-medium"
                 >
                   Remove
                 </button>
@@ -329,12 +345,12 @@ function MenuSection({ data }: { data: any }) {
  */
 function Confirmation({ data }: { data: any }) {
   return (
-    <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 backdrop-blur-sm">
+    <div className="neu-card rounded-xl p-6 backdrop-blur-sm border-l-4 border-success">
       <div className="text-center space-y-4">
         <div className="text-4xl">✅</div>
-        <h3 className="text-xl font-bold text-green-400">Order Confirmed!</h3>
+        <h3 className="text-xl font-bold text-success">Order Confirmed!</h3>
         {data?.message && (
-          <p className="text-sm text-green-300">{data.message}</p>
+          <p className="text-sm neu-text-secondary">{data.message}</p>
         )}
       </div>
     </div>
@@ -373,3 +389,4 @@ function Snippet({ content, title }: { content?: string; title?: string }) {
     </div>
   );
 }
+

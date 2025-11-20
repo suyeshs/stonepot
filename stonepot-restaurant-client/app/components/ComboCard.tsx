@@ -32,8 +32,8 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
   return (
     <div
       ref={cardRef}
-      className={`neu-card overflow-hidden hover-lift transition-all duration-300 ${
-        isHighlighted ? 'ring-4 ring-blue-400 shadow-2xl' : ''
+      className={`neu-card overflow-hidden hover-lift transition-all duration-normal ${
+        isHighlighted ? 'ring-4 ring-voice-listening shadow-2xl' : ''
       }`}
     >
       {/* Image */}
@@ -45,7 +45,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
             className="w-full h-full object-cover"
           />
           {item.tag && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+            <div className="absolute top-4 left-4 bg-error text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
               <span>🔥</span>
               <span>{item.tag}</span>
             </div>
@@ -69,7 +69,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
         <div className="flex items-center gap-3">
           {item.rating && (
             <div className="flex items-center gap-1">
-              <span className="text-yellow-500">⭐</span>
+              <span className="text-warning">⭐</span>
               <span className="font-semibold neu-text">{item.rating.toFixed(1)}</span>
               {item.reviews && (
                 <span className="text-xs neu-text-secondary">({item.reviews})</span>
@@ -78,8 +78,8 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
           )}
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             item.type === 'veg'
-              ? 'bg-green-100 text-green-700 border border-green-300'
-              : 'bg-red-100 text-red-700 border border-red-300'
+              ? 'bg-veg-light text-veg-dark border border-veg'
+              : 'bg-non-veg-light text-non-veg-dark border border-non-veg'
           }`}>
             {item.type === 'veg' ? '🌱 Veg' : '🍖 Non-Veg'}
           </span>
@@ -101,7 +101,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
         {/* Customization Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-sm font-semibold text-blue-500 hover:text-blue-600"
+          className="text-sm font-semibold text-info hover:text-info/80"
         >
           {isExpanded ? 'Hide Options' : 'Customize'}
         </button>
@@ -141,7 +141,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
           )}
         </AnimatePresence>
 
-        {/* Add to Cart Button */}
+        {/* Add to Order Button */}
         <button
           onClick={handleAddToCart}
           disabled={item.available === false}
@@ -149,7 +149,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ item, highlighted }) => {
             item.available === false ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {item.available === false ? 'Not Available' : `Add to Cart • ₹${item.price}`}
+          {item.available === false ? 'Not Available' : `Add to Order • ₹${item.price}`}
         </button>
       </div>
     </div>

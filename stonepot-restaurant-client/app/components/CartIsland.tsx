@@ -1,7 +1,6 @@
 'use client';
 
 import { observer } from 'mobx-react-lite';
-import { ShoppingBag } from 'lucide-react';
 import { cartStore } from '../stores/cartStore';
 
 interface CartIslandProps {
@@ -16,38 +15,42 @@ export const CartIsland = observer(function CartIsland({ onClick }: CartIslandPr
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-24 right-6 neu-card p-4 shadow-lg hover:shadow-xl transition-all duration-300 z-40 group"
+      className="fixed bottom-8 right-6 z-40 group"
       style={{
-        minWidth: '180px',
-        animation: 'slideInRight 0.3s ease-out'
+        animation: 'slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
       }}
     >
-      <div className="flex items-center gap-3">
-        {/* Cart Icon with Badge */}
-        <div className="relative">
-          <div className="neu-icon-container w-12 h-12">
-            <ShoppingBag className="w-6 h-6 neu-text-accent" />
+      {/* Floating Pill Design */}
+      <div className="relative bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all duration-normal hover:scale-105 active:scale-95">
+        {/* Glow Effect */}
+        <div className="absolute inset-0 rounded-full bg-primary-400/50 blur-xl opacity-60 group-hover:opacity-80 transition-opacity" />
+
+        {/* Content */}
+        <div className="relative flex items-center gap-4">
+          {/* Count Badge */}
+          <div className="bg-white/20 backdrop-blur-sm rounded-full w-10 h-10 flex items-center justify-center">
+            <span className="text-lg font-bold">{cartStore.itemCount}</span>
           </div>
-          {cartStore.itemCount > 0 && (
-            <div className="absolute -top-2 -right-2 neu-badge neu-badge-primary w-6 h-6 flex items-center justify-center text-xs font-bold">
-              {cartStore.itemCount}
+
+          {/* Order Summary */}
+          <div className="text-left">
+            <div className="text-xs font-medium opacity-90">
+              Your Order
             </div>
-          )}
+            <div className="text-lg font-bold">
+              ₹{cartStore.total}
+            </div>
+          </div>
+
+          {/* Arrow Indicator */}
+          <svg className="w-5 h-5 opacity-80 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
 
-        {/* Cart Summary */}
-        <div className="flex-1 text-left">
-          <div className="text-xs neu-text-secondary font-medium">
-            {cartStore.itemCount} {cartStore.itemCount === 1 ? 'item' : 'items'}
-          </div>
-          <div className="text-sm font-bold neu-text-accent">
-            ₹{cartStore.total}
-          </div>
-        </div>
+        {/* Pulse Animation */}
+        <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping" style={{ animationDuration: '2s' }} />
       </div>
-
-      {/* Ripple animation on add */}
-      <div className="absolute inset-0 rounded-2xl bg-green-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
 });

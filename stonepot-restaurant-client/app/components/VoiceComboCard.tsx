@@ -39,7 +39,7 @@ export function VoiceComboCard({ data, onAction }: VoiceComboCardProps) {
             className="w-full h-full object-cover"
           />
           {data.tag && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+            <div className="absolute top-4 left-4 bg-error text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
               <span>🔥</span>
               <span>{data.tag}</span>
             </div>
@@ -78,7 +78,7 @@ export function VoiceComboCard({ data, onAction }: VoiceComboCardProps) {
         {data.choices && data.choices.length > 0 && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm font-semibold text-blue-500 hover:text-blue-600"
+            className="text-sm font-semibold text-info hover:text-info/80"
           >
             {isExpanded ? 'Hide Options' : 'Customize'}
           </button>
@@ -111,7 +111,7 @@ export function VoiceComboCard({ data, onAction }: VoiceComboCardProps) {
           </div>
         )}
 
-        {/* Add to Cart Button */}
+        {/* Add to Order Button */}
         <button
           onClick={handleAddToCart}
           disabled={data.available === false}
@@ -119,7 +119,7 @@ export function VoiceComboCard({ data, onAction }: VoiceComboCardProps) {
             data.available === false ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {data.available === false ? 'Not Available' : `Add to Cart • ₹${data.price}`}
+          {data.available === false ? 'Not Available' : `Add to Order • ₹${data.price}`}
         </button>
       </div>
     </div>
