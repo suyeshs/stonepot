@@ -1,12 +1,16 @@
 /**
- * Display API Client for Theme Edge Worker Integration
- * Sends real-time display updates to ConversationSession Durable Object
+ * Display API Client for Display Worker Integration
+ * Sends real-time display updates to SessionManager Durable Object
+ * Updated paths to use /session/ instead of /conversation/
+ * Fixed default URL to point to stonepot-restaurant-display worker
  */
 
 export class DisplayApiClient {
   constructor(config) {
-    this.baseUrl = config.cloudflare.workerUrl || 'https://theme-edge-worker.suyesh.workers.dev';
+    this.baseUrl = config.cloudflare.workerUrl || 'https://stonepot-restaurant-display.suyesh.workers.dev';
     this.authToken = config.cloudflare.authToken;
+
+    console.log('[DisplayAPI] Initialized with baseUrl:', this.baseUrl);
 
     // Ensure baseUrl doesn't have trailing slash
     this.baseUrl = this.baseUrl.replace(/\/$/, '');
@@ -17,13 +21,14 @@ export class DisplayApiClient {
    */
   async initializeSession(sessionId, tenantId, category = 'restaurant') {
     try {
-      const response = await fetch(`${this.baseUrl}/conversation/${sessionId}/init`, {
+      const response = await fetch(`${this.baseUrl}/session/${sessionId}/init`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` })
         },
         body: JSON.stringify({
+          sessionId,
           tenantId,
           category
         })
@@ -72,7 +77,7 @@ export class DisplayApiClient {
       dishName: dish.name,
       hasImage: !!(dish.image || dish.imageUrl),
       hasChoices: !!dish.choices,
-      url: `${this.baseUrl}/conversation/${sessionId}/update`
+      url: `${this.baseUrl}/session/${sessionId}/update`
     });
 
     return this.sendUpdate(sessionId, {
@@ -202,7 +207,7 @@ export class DisplayApiClient {
    */
   async sendUpdate(sessionId, update) {
     try {
-      const response = await fetch(`${this.baseUrl}/conversation/${sessionId}/update`, {
+      const response = await fetch(`${this.baseUrl}/session/${sessionId}/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,7 +240,7 @@ export class DisplayApiClient {
    */
   async getSessionState(sessionId) {
     try {
-      const response = await fetch(`${this.baseUrl}/conversation/${sessionId}/state`, {
+      const response = await fetch(`${this.baseUrl}/session/${sessionId}/state`, {
         headers: {
           ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` })
         }

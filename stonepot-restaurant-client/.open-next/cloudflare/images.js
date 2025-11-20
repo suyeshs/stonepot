@@ -1,5 +1,5 @@
 var define_IMAGES_LOCAL_PATTERNS_default = [];
-var define_IMAGES_REMOTE_PATTERNS_default = [];
+var define_IMAGES_REMOTE_PATTERNS_default = [{ protocol: "https", hostname: "^(?:^(?:imagedelivery\\.net)$)$", pathname: "^(?:\\/(?!\\.{1,2}(?:\\/|$))(?:(?:(?!(?:^|\\/)\\.{1,2}(?:\\/|$)).)*?))$" }];
 let NEXT_IMAGE_REGEXP;
 async function fetchImage(fetcher, imageUrl, ctx) {
   if (!imageUrl || imageUrl.length > 3072 || imageUrl.startsWith("//")) {

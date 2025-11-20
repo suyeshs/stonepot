@@ -63,8 +63,12 @@ router.post('/sessions', async (req, res) => {
     // Initialize display session with theme worker (no Vertex AI for now)
     const displayClient = vertexAIService.getDisplayClient();
 
-    // Initialize display session on theme worker
-    await displayClient.initializeSession(sessionId, tenantId, 'restaurant');
+    // Initialize display session on theme worker (non-critical - will auto-init on first update)
+    try {
+      await displayClient.initializeSession(sessionId, tenantId, 'restaurant');
+    } catch (error) {
+      console.warn('[RestaurantRoutes] Display init failed (non-critical):', error.message);
+    }
 
     // Get the display UI URL
     const uiUrl = displayClient.getConversationUIUrl(sessionId, tenantId, 'restaurant');
@@ -841,6 +845,358 @@ router.post('/tenants/provision', async (req, res) => {
     console.error('[RestaurantRoutes] Failed to provision restaurant:', error);
     res.status(500).json({
       error: 'Failed to provision restaurant',
+      message: error.message
+    });
+  }
+});
+
+// ==================== ORDER & DELIVERY ENDPOINTS ====================
+
+/**
+ * Geocode an address (for frontend address verification)
+ * POST /api/restaurant/sessions/:sessionId/geocode-address
+ */
+router.post('/sessions/:sessionId/geocode-address', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { addressString, landmark, pincode } = req.body;
+
+    if (!addressString) {
+      return res.status(400).json({ error: 'addressString is required' });
+    }
+
+    console.log('[RestaurantRoutes] Geocoding address', { sessionId, addressString });
+
+    // Get services from vertexAIService
+    const googleMapsService = vertexAIService.googleMapsService;
+    const deliveryService = vertexAIService.deliveryService;
+
+    // Build full address string
+    let fullAddress = addressString;
+    if (landmark) fullAddress += `, Near ${landmark}`;
+    if (pincode) fullAddress += `, ${pincode}`;
+
+    // Geocode the address
+    const geocodeResult = await googleMapsService.geocodeAddress(fullAddress);
+
+    // Get restaurant location from config
+    const restaurantLocation = {
+      lat: config.restaurant?.location?.lat || 12.9716,
+      lng: config.restaurant?.location?.lng || 77.5946
+    };
+
+    // Check delivery eligibility
+    const deliveryCheck = await deliveryService.checkDeliveryZone(
+      restaurantLocation,
+      { lat: geocodeResult.lat, lng: geocodeResult.lng }
+    );
+
+    // Calculate delivery fee if eligible
+    let feeResult = null;
+    let estimatedTime = null;
+    if (deliveryCheck.eligible) {
+      const session = vertexAIService.getSession(sessionId);
+      const cartTotal = session?.orderState?.cart?.subtotal || 0;
+
+      feeResult = deliveryService.calculateDeliveryFee(
+        deliveryCheck.distance,
+        cartTotal
+      );
+
+      estimatedTime = deliveryService.calculateEstimatedDeliveryTime(
+        deliveryCheck.distance,
+        20
+      );
+    }
+
+    res.json({
+      success: true,
+      eligible: deliveryCheck.eligible,
+      address: {
+        formatted: geocodeResult.formattedAddress,
+        coordinates: {
+          lat: geocodeResult.lat,
+          lng: geocodeResult.lng
+        },
+        placeId: geocodeResult.placeId,
+        pincode: googleMapsService.extractPincode(geocodeResult.addressComponents),
+        city: googleMapsService.extractCity(geocodeResult.addressComponents),
+        state: googleMapsService.extractState(geocodeResult.addressComponents)
+      },
+      delivery: deliveryCheck.eligible ? {
+        distance: deliveryCheck.distance,
+        distanceText: deliveryCheck.distanceText,
+        durationText: deliveryCheck.durationText,
+        fee: feeResult.fee,
+        feeBreakdown: feeResult.breakdown,
+        isFreeDelivery: feeResult.isFree,
+        estimatedTime: estimatedTime.timeRange
+      } : null,
+      message: deliveryCheck.message
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Geocoding failed:', error);
+    res.status(500).json({
+      error: 'Failed to geocode address',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Create and finalize an order
+ * POST /api/restaurant/sessions/:sessionId/orders
+ */
+router.post('/sessions/:sessionId/orders', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const {
+      orderType,
+      paymentMethod,
+      deliveryAddress,
+      deliveryTime,
+      specialInstructions
+    } = req.body;
+
+    if (!orderType) {
+      return res.status(400).json({ error: 'orderType is required (delivery/pickup/dine-in)' });
+    }
+    if (!paymentMethod) {
+      return res.status(400).json({ error: 'paymentMethod is required (online/cash)' });
+    }
+
+    console.log('[RestaurantRoutes] Creating order', { sessionId, orderType, paymentMethod });
+
+    const session = vertexAIService.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Validate cart
+    if (!session.orderState.cart.items || session.orderState.cart.items.length === 0) {
+      return res.status(400).json({ error: 'Cart is empty' });
+    }
+
+    // Validate customer info
+    if (!session.orderState.customer || !session.orderState.customer.name || !session.orderState.customer.phone) {
+      return res.status(400).json({ error: 'Customer information is required' });
+    }
+
+    // Validate delivery address for delivery orders
+    if (orderType === 'delivery' && !deliveryAddress) {
+      return res.status(400).json({ error: 'Delivery address is required for delivery orders' });
+    }
+
+    // Calculate totals
+    const subtotal = session.orderState.cart.subtotal || 0;
+    const deliveryFee = orderType === 'delivery' ? (session.orderState.deliveryFee || 0) : 0;
+    const taxRate = 0.05; // 5% GST
+    const tax = Math.round((subtotal + deliveryFee) * taxRate * 100) / 100;
+    const total = subtotal + deliveryFee + tax;
+
+    // Prepare order data
+    const orderData = {
+      orderId: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+      sessionId: session.id,
+      customer: {
+        name: session.orderState.customer.name,
+        phone: session.orderState.customer.phone,
+        email: session.orderState.customer.email || null
+      },
+      cart: {
+        items: session.orderState.cart.items,
+        subtotal,
+        tax,
+        deliveryFee,
+        total
+      },
+      orderType,
+      paymentMethod,
+      deliveryAddress: orderType === 'delivery' ? deliveryAddress : null,
+      deliveryTime: deliveryTime || null,
+      specialInstructions: specialInstructions || null,
+      estimatedDeliveryTime: orderType === 'delivery' ? session.orderState.estimatedDeliveryTime : null,
+      status: paymentMethod === 'online' ? 'pending_payment' : 'confirmed',
+      createdAt: Date.now()
+    };
+
+    // Create order in Firebase
+    try {
+      const savedOrder = await firebaseService.createOrder(
+        session.tenantId,
+        session.orderState.customer.phone,
+        orderData
+      );
+      console.log('[RestaurantRoutes] Order saved to Firebase:', savedOrder.orderId);
+    } catch (error) {
+      console.error('[RestaurantRoutes] Error saving order to Firebase:', error);
+    }
+
+    // Store order in session
+    session.orderState.finalizedOrder = orderData;
+    await vertexAIService.persistSessionState(session);
+
+    // If online payment, create Razorpay order
+    if (paymentMethod === 'online') {
+      const paymentService = vertexAIService.paymentService;
+
+      try {
+        const razorpayOrder = await paymentService.createPaymentOrder({
+          amount: total,
+          orderId: orderData.orderId,
+          customer: orderData.customer,
+          currency: 'INR'
+        });
+
+        session.orderState.razorpayOrderId = razorpayOrder.id;
+        await vertexAIService.persistSessionState(session);
+
+        res.json({
+          success: true,
+          order: orderData,
+          razorpayOrder: {
+            id: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            keyId: config.razorpay.keyId
+          },
+          nextStep: 'payment'
+        });
+      } catch (error) {
+        console.error('[RestaurantRoutes] Razorpay order creation error:', error);
+        res.status(500).json({
+          error: 'Failed to initiate payment',
+          message: error.message
+        });
+      }
+    } else {
+      // Cash payment - order is confirmed immediately
+      res.json({
+        success: true,
+        order: orderData,
+        nextStep: 'confirmed'
+      });
+    }
+  } catch (error) {
+    console.error('[RestaurantRoutes] Order creation failed:', error);
+    res.status(500).json({
+      error: 'Failed to create order',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Verify Razorpay payment signature
+ * POST /api/restaurant/orders/:orderId/verify-payment
+ */
+router.post('/orders/:orderId/verify-payment', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({ error: 'Missing payment verification parameters' });
+    }
+
+    console.log('[RestaurantRoutes] Verifying payment', { orderId, razorpayPaymentId });
+
+    const paymentService = vertexAIService.paymentService;
+
+    // Verify signature
+    const isValid = paymentService.verifyPaymentSignature({
+      orderId: razorpayOrderId,
+      paymentId: razorpayPaymentId,
+      signature: razorpaySignature
+    });
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment signature',
+        message: 'Payment verification failed'
+      });
+    }
+
+    // Get payment details
+    const paymentDetails = await paymentService.getPaymentDetails(razorpayPaymentId);
+
+    // Update order status in Firebase
+    try {
+      await firebaseService.updateOrderStatus(orderId, {
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        razorpayOrderId,
+        razorpayPaymentId,
+        paymentDetails,
+        paidAt: Date.now()
+      });
+      console.log('[RestaurantRoutes] Order payment confirmed:', orderId);
+    } catch (error) {
+      console.error('[RestaurantRoutes] Error updating order status:', error);
+    }
+
+    res.json({
+      success: true,
+      verified: true,
+      orderId,
+      paymentDetails,
+      message: 'Payment verified successfully'
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Payment verification failed:', error);
+    res.status(500).json({
+      error: 'Failed to verify payment',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Razorpay webhook handler
+ * POST /api/webhooks/razorpay
+ */
+router.post('/webhooks/razorpay', async (req, res) => {
+  try {
+    const webhookBody = JSON.stringify(req.body);
+    const signature = req.headers['x-razorpay-signature'];
+
+    console.log('[RestaurantRoutes] Razorpay webhook received:', req.body.event);
+
+    const paymentService = vertexAIService.paymentService;
+
+    // Verify webhook signature
+    const isValid = paymentService.verifyWebhookSignature(webhookBody, signature);
+    if (!isValid) {
+      console.error('[RestaurantRoutes] Invalid webhook signature');
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    // Process webhook event
+    const result = await paymentService.handleWebhookEvent(req.body);
+
+    // Update order in Firebase based on result
+    if (result.processed && result.orderId) {
+      try {
+        await firebaseService.updateOrderStatus(result.orderId, {
+          status: result.status,
+          razorpayPaymentId: result.razorpayPaymentId,
+          webhookProcessedAt: Date.now()
+        });
+        console.log('[RestaurantRoutes] Order status updated from webhook:', result.orderId);
+      } catch (error) {
+        console.error('[RestaurantRoutes] Error updating order from webhook:', error);
+      }
+    }
+
+    res.json({
+      success: true,
+      processed: result.processed
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Webhook processing failed:', error);
+    res.status(500).json({
+      error: 'Failed to process webhook',
       message: error.message
     });
   }

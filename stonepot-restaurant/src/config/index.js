@@ -41,6 +41,20 @@ export const config = {
     sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '600000')
   },
 
+  // File Search configuration for scalable menu retrieval
+  fileSearch: {
+    enabled: process.env.FILE_SEARCH_ENABLED === 'true',
+    apiKey: process.env.GEMINI_API_KEY, // File Search uses Gemini API
+    stores: {
+      // Map tenant IDs to their File Search store names
+      'demo': process.env.FILE_SEARCH_STORE_DEMO,
+      'tcfc': process.env.FILE_SEARCH_STORE_TCFC,
+      'test': process.env.FILE_SEARCH_STORE_TEST
+    },
+    // Fallback to static menu if File Search fails or is disabled
+    fallbackToStatic: process.env.FILE_SEARCH_FALLBACK !== 'false'
+  },
+
   // Legacy vertexAI config for backward compatibility
   vertexAI: {
     projectId: process.env.VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || 'sahamati-labs',
@@ -68,8 +82,39 @@ export const config = {
   },
 
   cloudflare: {
-    workerUrl: process.env.CLOUDFLARE_WORKER_URL || 'https://theme-edge-worker.suyesh.workers.dev',
+    workerUrl: process.env.CLOUDFLARE_WORKER_URL || 'https://stonepot-restaurant-display.suyesh.workers.dev',
     authToken: process.env.CLOUDFLARE_AUTH_TOKEN
+  },
+
+  // Google Maps configuration
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY,
+    geocodingEnabled: true,
+    placesEnabled: true
+  },
+
+  // Razorpay payment configuration
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    useMock: process.env.USE_MOCK_PAYMENT === 'true' // Enable mock payment service
+  },
+
+  // Tax configuration (Indian GST)
+  tax: {
+    gstRate: parseFloat(process.env.GST_RATE || '0.05'), // 5% GST for restaurants
+    enableInvoicePrinting: process.env.ENABLE_INVOICE_PRINTING !== 'false' // Enabled by default
+  },
+
+  // Delivery configuration
+  delivery: {
+    defaultRadius: parseFloat(process.env.DELIVERY_RADIUS || '10'), // km
+    baseFee: parseInt(process.env.DELIVERY_BASE_FEE || '40'), // ₹40
+    perKmCharge: parseInt(process.env.DELIVERY_PER_KM || '10'), // ₹10/km
+    freeDeliveryAbove: parseInt(process.env.FREE_DELIVERY_ABOVE || '500'), // ₹500
+    minDeliveryFee: parseInt(process.env.MIN_DELIVERY_FEE || '20'), // ₹20
+    maxDeliveryFee: parseInt(process.env.MAX_DELIVERY_FEE || '200') // ₹200
   },
 
   server: {
@@ -79,7 +124,12 @@ export const config = {
   },
 
   cors: {
-    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(/[\s,]+/).filter(Boolean) || ['http://localhost:3000']
+    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(/[\s,]+/).filter(Boolean) || [
+      'http://localhost:3000',
+      'https://*.workers.dev',
+      'https://*.suyesh.workers.dev',
+      '*' // Allow all origins for development
+    ]
   },
 
   session: {
@@ -100,7 +150,11 @@ export const config = {
         'order_summary',
         'confirmation',
         'webpage',
-        'snippet'
+        'snippet',
+        'address_verification',
+        'checkout_summary',
+        'payment_pending',
+        'order_confirmed'
       ]
     }
   },

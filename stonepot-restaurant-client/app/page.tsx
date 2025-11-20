@@ -3,20 +3,27 @@
 import { useState, useRef, useEffect } from 'react';
 import { VertexAILiveService } from './services/VertexAILiveService';
 import { DisplayWebSocketService } from './services/DisplayWebSocket';
+import { PartyKitService } from './services/PartyKitService';
+import { VADService } from './services/VADService';
 import { MultimodalDisplay } from './components/MultimodalDisplay';
-import { ProgressOrb } from './components/ProgressOrb';
 import { Cart } from './components/Cart';
 import { CartIsland } from './components/CartIsland';
+import { CollaborativeOrderPanel } from './components/collaborative/CollaborativeOrderPanel';
+import { OrderFlow } from './components/order/OrderFlow';
+import { Toast, ToastMessage } from './components/Toast';
 import Menu from './components/Menu';
 import { menuStore } from './stores/menuStore';
 import { cartStore } from './stores/cartStore';
+import { collaborativeOrderStore } from './stores/collaborativeOrderStore';
 import { menuItems } from './data/menuData';
 import { observer } from 'mobx-react-lite';
+import { VAD_CONFIG } from './config/vad';
 
 const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [isConnecting, setIsConnecting] = useState(false); // Connection in progress
   const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +31,21 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   const [displayService, setDisplayService] = useState<DisplayWebSocketService | null>(null);
   const [currentDisplay, setCurrentDisplay] = useState<any>(null);
   const [transcriptions, setTranscriptions] = useState<any[]>([]);
+  const displayLockRef = useRef<boolean>(false); // Prevents rapid display clearing
+  const criticalDisplayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // UI state
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [orderingStep, setOrderingStep] = useState(1);
   const [showCart, setShowCart] = useState(false);
+  const [showOrderFlow, setShowOrderFlow] = useState(false);
   const lastScrollY = useRef(0);
+  const cartAutoHideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Collaborative order state
+  const [showCollaborativeOrder, setShowCollaborativeOrder] = useState(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [customerName, setCustomerName] = useState<string>('');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
 
   // Audio visualization
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(32).fill(0));
@@ -46,6 +62,15 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   const animationFrameRef = useRef<number | null>(null);
   const idleAnimationRef = useRef<number | null>(null);
   const conversationStartTimeRef = useRef<number>(0);
+
+  // PartyKit ref
+  const partykitServiceRef = useRef<PartyKitService | null>(null);
+
+  // VAD ref and state
+  const vadServiceRef = useRef<VADService | null>(null);
+  const silenceFrameCountRef = useRef(0);
+  const vadSpeakingRef = useRef(false);
+  const speechBufferFramesRef = useRef(0); // Frames to send after speech ends
 
   // Conversation timer
   useEffect(() => {
@@ -99,7 +124,155 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper to show cart with auto-hide
+  const showCartWithAutoHide = (duration: number = 8000) => {
+    // Clear any existing timer
+    if (cartAutoHideTimerRef.current) {
+      clearTimeout(cartAutoHideTimerRef.current);
+    }
+
+    // Show cart
+    setShowCart(true);
+
+    // Set new auto-hide timer
+    cartAutoHideTimerRef.current = setTimeout(() => {
+      setShowCart(false);
+      cartAutoHideTimerRef.current = null;
+    }, duration);
+  };
+
+  // Helper to keep cart open (cancel auto-hide)
+  const keepCartOpen = () => {
+    if (cartAutoHideTimerRef.current) {
+      clearTimeout(cartAutoHideTimerRef.current);
+      cartAutoHideTimerRef.current = null;
+    }
+    setShowCart(true);
+  };
+
+  // Toast notifications
+  const showToast = (message: string, type: ToastMessage['type'] = 'info', duration?: number) => {
+    const id = Date.now().toString();
+    const toast: ToastMessage = { id, message, type, duration };
+    setToasts((prev) => [...prev, toast]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // PartyKit Connection
+  const connectToPartyKit = async (roomUrl: string, orderData: any) => {
+    try {
+      console.log('[PartyKit] Connecting to room:', roomUrl);
+
+      const service = new PartyKitService();
+      partykitServiceRef.current = service;
+
+      const tenantId = orderData.tenantId || sessionInfo?.tenantId || 'default';
+      const customerId = `${tenantId}_${customerPhone}`;
+
+      // Setup callbacks before connecting
+      service.onSync((state) => {
+        console.log('[PartyKit] Synced state:', state);
+        showToast('Connected to group order', 'success');
+      });
+
+      service.onParticipantJoined((participant) => {
+        const isMe = participant.id === customerId;
+        if (!isMe) {
+          showToast(`${participant.name} joined the order`, 'participant');
+        }
+      });
+
+      service.onParticipantLeft((participant) => {
+        showToast(`${participant.name} left`, 'info');
+      });
+
+      service.onItemAdded((item, participant) => {
+        const isMe = participant.id === customerId;
+        if (!isMe) {
+          showToast(`${participant.name} added ${item.dishName}`, 'info');
+        }
+      });
+
+      service.onItemRemoved((itemId, participant) => {
+        const isMe = participant.id === customerId;
+        if (!isMe) {
+          showToast(`${participant.name} removed an item`, 'info');
+        }
+      });
+
+      service.onOrderFinalized(() => {
+        showToast('Order has been finalized!', 'success', 6000);
+      });
+
+      service.onError((error) => {
+        console.error('[PartyKit] Error:', error);
+        showToast('Connection error. Reconnecting...', 'error');
+      });
+
+      // Connect to PartyKit
+      await service.connect(
+        roomUrl,
+        customerId,
+        customerName || 'Guest',
+        orderData.circleId,
+        tenantId,
+        customerPhone
+      );
+
+      // Setup store
+      collaborativeOrderStore.setRoomData({
+        roomId: orderData.id || orderData.sessionId,
+        circleId: orderData.circleId,
+        circleName: orderData.circleName || 'Group Order',
+        currentUserId: customerId
+      });
+
+      // Open collaborative order panel
+      setShowCollaborativeOrder(true);
+
+      console.log('[PartyKit] Connected successfully');
+    } catch (error) {
+      console.error('[PartyKit] Connection failed:', error);
+      showToast('Failed to connect to group order', 'error');
+    }
+  };
+
+  const disconnectFromPartyKit = () => {
+    if (partykitServiceRef.current) {
+      partykitServiceRef.current.disconnect();
+      partykitServiceRef.current = null;
+    }
+    setShowCollaborativeOrder(false);
+  };
+
+  // Handle manual order flow
+  const handlePlaceOrder = () => {
+    if (cartStore.items.length === 0) {
+      showToast('Your cart is empty', 'error');
+      return;
+    }
+    setShowCart(false);
+    setShowOrderFlow(true);
+  };
+
+  const handleOrderFlowClose = () => {
+    setShowOrderFlow(false);
+  };
+
   // Idle animation
+  // Helper: Convert Float32 to PCM16
+  const convertFloat32ToPCM16 = (float32Data: Float32Array): ArrayBuffer => {
+    const pcmData = new Int16Array(float32Data.length);
+    for (let i = 0; i < float32Data.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32Data[i]));
+      pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return pcmData.buffer;
+  };
+
   const startIdleAnimation = () => {
     if (idleAnimationRef.current) return;
 
@@ -127,9 +300,22 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   const startSession = async () => {
     try {
       console.log('[Restaurant] Starting session...');
-      setSessionStatus('listening');
 
-      // Request microphone permission FIRST
+      // INSTANT FEEDBACK: Show orbs immediately before any async operations
+      setIsConnecting(true); // Mark as connecting
+      setSessionStatus('listening');
+      setIsSessionActive(true);
+      startIdleAnimation();
+
+      // VAD DISABLED - Model tensor mismatch issue
+      // Initialize VAD FIRST (while user waits)
+      // console.log('[VAD] Initializing Voice Activity Detection...');
+      // const vadService = new VADService();
+      // await vadService.initialize();
+      // vadServiceRef.current = vadService;
+      // console.log('[VAD] Ready ✓');
+
+      // Request microphone permission
       console.log('[Restaurant] Requesting microphone permission...');
       await startContinuousMicrophoneCapture();
       console.log('[Restaurant] Microphone access granted');
@@ -200,15 +386,45 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
         console.log('[Restaurant] Display update:', update);
         if (update.type === 'transcription') {
           setTranscriptions((prev) => [...prev, update]);
+
+          // Check if user is asking about cart or wanting to continue ordering
+          const text = update.data?.text?.toLowerCase() || '';
+          const cartRelatedPhrases = ['cart', 'order', 'what did i', 'what have i', 'show me', 'whats in'];
+          const continueOrderingPhrases = ['add', 'also', 'and', 'want', 'get me', 'ill have', 'i need'];
+
+          if (cartRelatedPhrases.some(phrase => text.includes(phrase))) {
+            // User is asking about cart - keep it open indefinitely
+            keepCartOpen();
+          } else if (continueOrderingPhrases.some(phrase => text.includes(phrase)) && cartStore.itemCount > 0) {
+            // User is adding more items - keep cart visible but with auto-hide
+            showCartWithAutoHide(12000); // 12 seconds for multi-item ordering
+          }
         } else {
+          // Protected display update with minimum display duration for critical flows
+          const isCriticalDisplay = ['checkout_summary', 'payment_pending', 'address_verification'].includes(update.type);
+
+          // Clear any existing critical display timer
+          if (criticalDisplayTimerRef.current) {
+            clearTimeout(criticalDisplayTimerRef.current);
+            criticalDisplayTimerRef.current = null;
+          }
+
+          // Update display
           setCurrentDisplay(update);
 
-          // Update ordering step based on display type
-          if (update.type === 'order_summary' || update.type === 'cart_updated') {
-            setOrderingStep(2); // Cart step
-          } else if (update.type === 'dish_card' || update.type === 'menu_item' || update.type === 'combo_item') {
-            setOrderingStep(1); // Browse step
-            // Highlight the menu item
+          // For critical displays, set a lock to prevent accidental clearing
+          if (isCriticalDisplay) {
+            displayLockRef.current = true;
+            criticalDisplayTimerRef.current = setTimeout(() => {
+              displayLockRef.current = false;
+              criticalDisplayTimerRef.current = null;
+            }, 2000); // Minimum 2 second display duration
+          } else {
+            displayLockRef.current = false;
+          }
+
+          // Highlight menu items when shown
+          if (update.type === 'dish_card' || update.type === 'menu_item' || update.type === 'combo_item') {
             if (update.data?.name) {
               menuStore.highlightItem(update.data.name);
             }
@@ -236,28 +452,117 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
                 }
               }
 
-              // Auto-show cart when item is added
-              setShowCart(true);
-              setTimeout(() => setShowCart(false), 3000); // Auto-hide after 3s
+              // Auto-show cart when item is added (8 seconds to review)
+              showCartWithAutoHide(8000);
             }
+          }
+
+          // Handle cart updates from voice ordering (including removals)
+          if (update.type === 'cart_updated' && update.data?.cart) {
+            console.log('[Restaurant] Cart updated from voice:', update.data.action);
+
+            // Sync entire cart from backend
+            const backendCart = update.data.cart;
+
+            // Clear current cart and rebuild from backend state
+            cartStore.clearCart();
+
+            // Add all items from backend cart
+            if (backendCart.items && backendCart.items.length > 0) {
+              backendCart.items.forEach((backendItem: any) => {
+                // Find the menu item to get full details
+                const menuItem = menuItems.find(
+                  item => item.name.toLowerCase() === backendItem.dishName.toLowerCase()
+                );
+
+                if (menuItem) {
+                  // Add items based on quantity
+                  for (let i = 0; i < backendItem.quantity; i++) {
+                    if ('choices' in menuItem) {
+                      // It's a combo item - use customization if available
+                      const choice = backendItem.customization || menuItem.choices[0];
+                      cartStore.addComboItem(menuItem, choice);
+                    } else {
+                      cartStore.addMenuItem(menuItem);
+                    }
+                  }
+                }
+              });
+            }
+
+            // Show cart for modifications and additions
+            // Keep cart open longer when removing (10s) so user can see what's left
+            // Shorter for additions (8s) to not interrupt ordering flow
+            if (update.data.action === 'remove') {
+              showCartWithAutoHide(10000); // 10 seconds after removal
+            } else if (update.data.action === 'decrease') {
+              showCartWithAutoHide(8000); // 8 seconds after quantity decrease
+            } else if (update.data.action === 'increase') {
+              showCartWithAutoHide(6000); // 6 seconds after quantity increase
+            }
+
+            // Sync to PartyKit if in collaborative mode
+            if (collaborativeOrderStore.roomId && partykitServiceRef.current && update.data.action === 'add') {
+              const addedItem = backendCart.items[backendCart.items.length - 1];
+              if (addedItem) {
+                partykitServiceRef.current.sendAddItem({
+                  dishName: addedItem.dishName,
+                  dishType: addedItem.dishType,
+                  quantity: addedItem.quantity,
+                  price: addedItem.price,
+                  customization: addedItem.customization
+                });
+              }
+            }
+          }
+
+          // Handle customer info capture
+          if (update.type === 'customer_info_captured' && update.data?.customer) {
+            setCustomerName(update.data.customer.name);
+            setCustomerPhone(update.data.customer.phone);
+            showToast(`Welcome, ${update.data.customer.name}!`, 'success');
+          }
+
+          // Handle circle created
+          if (update.type === 'circle_created' && update.data?.circle) {
+            showToast(`Circle "${update.data.circle.name}" created`, 'success');
+          }
+
+          // Handle member invited
+          if (update.type === 'member_invited' && update.data) {
+            showToast(`${update.data.inviteeName} added to circle`, 'success');
+          }
+
+          // Handle collaborative order started
+          if (update.type === 'collaborative_order_started' && update.data) {
+            const { partykitRoomUrl, collaborativeOrder } = update.data;
+            if (partykitRoomUrl && collaborativeOrder) {
+              connectToPartyKit(partykitRoomUrl, collaborativeOrder);
+            }
+          }
+
+          // Handle collaborative order finalized
+          if (update.type === 'collaborative_order_finalized') {
+            collaborativeOrderStore.finalize();
+            showToast('Order finalized! Proceeding to payment...', 'success', 6000);
           }
         }
       });
 
       service.on('error', (error: any) => {
-        console.error('[Restaurant] Display service error:', error);
+        console.error('[Display service error:', error);
       });
 
-      // Set session active
-      setIsSessionActive(true);
-      startIdleAnimation();
-
+      // Mark connection as complete
+      setIsConnecting(false);
       console.log('[Restaurant] Session started successfully');
     } catch (error: any) {
       console.error('[Restaurant] Failed:', error);
       setError(error.message);
       setSessionStatus('idle');
       setIsSessionActive(false);
+      setIsConnecting(false); // Reset connecting state
+      stopIdleAnimation(); // Stop animation on error
     }
   };
 
@@ -275,6 +580,15 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
     const audioContext = new AudioContext({ sampleRate: 16000 });
     recordingContextRef.current = audioContext;
 
+    // CRITICAL: Verify actual sample rate
+    const actualSampleRate = audioContext.sampleRate;
+    console.log(`[Audio] Requested sample rate: 16000 Hz | Actual sample rate: ${actualSampleRate} Hz`);
+
+    if (actualSampleRate !== 16000) {
+      console.error(`[Audio] ⚠️ SAMPLE RATE MISMATCH! Browser using ${actualSampleRate} Hz instead of 16000 Hz`);
+      console.error('[Audio] VAD will NOT work correctly - resampling required!');
+    }
+
     // Load AudioWorklet processor
     await audioContext.audioWorklet.addModule('/audio-processor.js');
 
@@ -282,7 +596,7 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
     const workletNode = new AudioWorkletNode(audioContext, 'audio-stream-processor');
 
     // Handle messages from AudioWorklet
-    workletNode.port.onmessage = (event) => {
+    workletNode.port.onmessage = async (event) => {
       const { type, data, rms, duration } = event.data;
 
       if (type === 'speech-start') {
@@ -315,14 +629,88 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
         lastSpeechStartRef.current = performance.now();
         setSessionStatus('listening');
         stopIdleAnimation();
-        console.log(`[Audio] Speech detected (RMS: ${rms.toFixed(4)})`);
+        // console.log(`[Audio] Speech detected (RMS: ${rms.toFixed(4)})`);
       } else if (type === 'speech-end') {
-        setSessionStatus('thinking');
-        console.log(`[Audio] Speech ended after ${duration.toFixed(0)}ms`);
-        setAudioLevels(new Array(32).fill(0));
+        // RMS-based speech end (for interruption only)
+        // VAD will handle the actual turn completion
+        // console.log(`[Audio] RMS silence detected after ${duration.toFixed(0)}ms`);
       } else if (type === 'audio-data') {
-        if (!vertexAILiveServiceRef.current?.isActive()) return;
-        vertexAILiveServiceRef.current.sendAudio(data);
+        // REVERTED: Direct audio sending without VAD (VAD will be fixed later)
+        if (!vertexAILiveServiceRef.current?.isActive()) {
+          return;
+        }
+
+        // Convert ArrayBuffer to Float32Array, then to PCM16
+        const float32Data = new Float32Array(data);
+        const pcmData = convertFloat32ToPCM16(float32Data);
+
+        // Send all audio directly to Gemini
+        if (vertexAILiveServiceRef.current.isActive()) {
+          vertexAILiveServiceRef.current.sendAudio(pcmData);
+        }
+
+        /* VAD CODE COMMENTED OUT - Model expects 'state' but we're sending 'h' and 'c'
+        // Run VAD
+        const vadResult = await vadServiceRef.current.process(float32Data);
+
+        if (vadResult.isSpeech) {
+          // Speech detected - convert to PCM16 and send to Gemini
+          const pcmData = convertFloat32ToPCM16(float32Data);
+
+          if (vertexAILiveServiceRef.current.isActive()) {
+            vertexAILiveServiceRef.current.sendAudio(pcmData);
+          }
+
+          // Reset silence counter
+          silenceFrameCountRef.current = 0;
+
+          // Mark as speaking if not already
+          if (!vadSpeakingRef.current) {
+            vadSpeakingRef.current = true;
+            setSessionStatus('listening');
+            stopIdleAnimation();
+            console.log('[VAD] Speech started');
+          }
+
+          // Reset buffer counter
+          speechBufferFramesRef.current = VAD_CONFIG.positiveSpeechPad;
+
+        } else if (vadSpeakingRef.current) {
+          // Silence detected while speaking
+          silenceFrameCountRef.current++;
+
+          // Continue sending audio for a short buffer period after speech ends
+          // This prevents cutting off final syllables
+          if (speechBufferFramesRef.current > 0) {
+            const pcmData = convertFloat32ToPCM16(float32Data);
+            if (vertexAILiveServiceRef.current.isActive()) {
+              vertexAILiveServiceRef.current.sendAudio(pcmData);
+            }
+            speechBufferFramesRef.current--;
+          }
+
+          // If silence persists beyond threshold, mark turn complete
+          if (silenceFrameCountRef.current >= VAD_CONFIG.maxSilenceFrames) {
+            vadSpeakingRef.current = false;
+            silenceFrameCountRef.current = 0;
+            speechBufferFramesRef.current = 0;
+
+            // Send turn complete signal to Gemini
+            if (vertexAILiveServiceRef.current) {
+              vertexAILiveServiceRef.current.sendTurnComplete();
+            }
+
+            setSessionStatus('thinking');
+            setAudioLevels(new Array(32).fill(0));
+            console.log('[VAD] Turn complete - sustained silence detected');
+
+            // Log VAD stats every turn for cost tracking
+            if (VAD_CONFIG.debug) {
+              vadServiceRef.current?.logStats();
+            }
+          }
+        }
+        */
       }
     };
 
@@ -454,12 +842,32 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   };
 
   const endSession = async () => {
+    // Clear cart auto-hide timer
+    if (cartAutoHideTimerRef.current) {
+      clearTimeout(cartAutoHideTimerRef.current);
+      cartAutoHideTimerRef.current = null;
+    }
+
     // Stop all animations
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
     stopIdleAnimation();
+
+    // VAD DISABLED
+    // Log final VAD stats before cleanup
+    // if (vadServiceRef.current) {
+    //   console.log('[VAD] Final session statistics:');
+    //   vadServiceRef.current.logStats();
+    //   vadServiceRef.current.dispose();
+    //   vadServiceRef.current = null;
+    // }
+
+    // Reset VAD state
+    // silenceFrameCountRef.current = 0;
+    // vadSpeakingRef.current = false;
+    // speechBufferFramesRef.current = 0;
 
     // Disconnect services
     if (vertexAILiveServiceRef.current) {
@@ -471,6 +879,9 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
       displayService.disconnect();
       setDisplayService(null);
     }
+
+    // Disconnect PartyKit
+    disconnectFromPartyKit();
 
     // Close audio contexts
     if (recordingContextRef.current) {
@@ -562,17 +973,23 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
             </span>
           </div>
 
-          {/* Cart Modal */}
+          {/* Order Panel - Slide-in from Right */}
           {showCart && (
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
+              className="fixed inset-0 z-50 flex"
               onClick={() => setShowCart(false)}
             >
-              <div
-                className="max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in"
+              {/* Backdrop with blur */}
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" />
+
+              {/* Slide-in Panel */}
+              <div className="ml-auto relative w-full max-w-md h-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                style={{
+                  animation: 'slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
               >
-                <Cart />
+                <Cart onPlaceOrder={handlePlaceOrder} />
               </div>
             </div>
           )}
@@ -622,14 +1039,27 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
 
               {/* Voice-triggered Dish Card Modal */}
               {currentDisplay && (currentDisplay.type === 'dish_card' || currentDisplay.type === 'menu_item' || currentDisplay.type === 'combo_item') && (
-                <div
-                  className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
-                  onClick={() => setCurrentDisplay(null)}
-                >
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
                   <div
                     className="max-w-md w-full animate-scale-in"
-                    onClick={(e) => e.stopPropagation()}
                   >
+                    <MultimodalDisplay
+                      visualData={currentDisplay}
+                      onAction={handleDisplayAction}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Order/Payment Flow Modal - Non-dismissible to prevent accidental closure */}
+              {currentDisplay && (
+                currentDisplay.type === 'checkout_summary' ||
+                currentDisplay.type === 'payment_pending' ||
+                currentDisplay.type === 'order_confirmed' ||
+                currentDisplay.type === 'address_verification'
+              ) && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
+                  <div className="max-w-md w-full h-full max-h-[90vh] animate-scale-in">
                     <MultimodalDisplay
                       visualData={currentDisplay}
                       onAction={handleDisplayAction}
@@ -686,35 +1116,77 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
                   );
                 })}
               </svg>
+
+              {/* Connection Loading Spinner Overlay */}
+              {isConnecting && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-full">
+                  <svg className="animate-spin h-12 w-12" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Progress Orb */}
-          <ProgressOrb
-            currentStep={orderingStep}
-            totalSteps={3}
-            steps={['Browse', 'Cart', 'Pay']}
-          />
 
           {/* Cart Island - Floating cart indicator */}
           <CartIsland onClick={() => setShowCart(true)} />
 
-          {/* Cart Modal */}
+          {/* Order Panel - Slide-in from Right */}
           {showCart && (
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in"
+              className="fixed inset-0 z-50 flex"
               onClick={() => setShowCart(false)}
             >
-              <div
-                className="max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in"
+              {/* Backdrop with blur */}
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" />
+
+              {/* Slide-in Panel */}
+              <div className="ml-auto relative w-full max-w-md h-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                style={{
+                  animation: 'slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
               >
-                <Cart />
+                <Cart onPlaceOrder={handlePlaceOrder} />
               </div>
             </div>
           )}
         </>
       )}
+
+      {/* Toast Notifications */}
+      <Toast toasts={toasts} onRemove={removeToast} />
+
+      {/* Collaborative Order Panel */}
+      <CollaborativeOrderPanel
+        isOpen={showCollaborativeOrder}
+        onClose={() => {
+          disconnectFromPartyKit();
+          showToast('Left group order', 'info');
+        }}
+      />
+
+      {/* Order Flow Panel */}
+      <OrderFlow
+        isOpen={showOrderFlow}
+        onClose={handleOrderFlowClose}
+        sessionId={sessionInfo?.sessionId}
+        backendUrl={process.env.NEXT_PUBLIC_API_URL || 'https://stonepot-restaurant-334610188311.us-central1.run.app'}
+      />
     </div>
   );
 });

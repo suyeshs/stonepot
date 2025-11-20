@@ -126,8 +126,12 @@ export class SessionManager extends DurableObject {
       case 'confirmation':
       case 'webpage':
       case 'snippet':
-      case 'cart_item_added':  // NEW: Cart item added notification
-      case 'cart_updated':     // NEW: Cart updated
+      case 'cart_item_added':  // Cart item added notification
+      case 'cart_updated':     // Cart updated
+      case 'address_verification':  // Address verification with delivery info
+      case 'checkout_summary':      // Checkout summary before payment
+      case 'payment_pending':       // Payment pending/processing
+      case 'order_confirmed':       // Order confirmed/completed
         this.conversationState.displayUpdates.push(update);
         break;
 

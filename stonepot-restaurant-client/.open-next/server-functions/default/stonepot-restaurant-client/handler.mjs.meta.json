@@ -2329,17 +2329,17 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page_client-reference-manifest.js": {
-      "bytes": 3240,
+      "bytes": 3305,
       "imports": [],
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page_client-reference-manifest.js": {
-      "bytes": 3342,
+      "bytes": 3396,
       "imports": [],
       "format": "cjs"
     },
     ".open-next/server-functions/default/node_modules/next/dist/server/load-manifest.js": {
-      "bytes": 11378,
+      "bytes": 11349,
       "imports": [
         {
           "path": "fs",
@@ -2359,12 +2359,12 @@
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page_client-reference-manifest.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page_client-reference-manifest.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page_client-reference-manifest.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page_client-reference-manifest.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page_client-reference-manifest.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page_client-reference-manifest.js"
         }
       ],
       "format": "cjs"
@@ -2408,7 +2408,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/chunks/276.js": {
-      "bytes": 172566,
+      "bytes": 172500,
       "imports": [],
       "format": "cjs"
     },
@@ -2757,7 +2757,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js": {
-      "bytes": 3395,
+      "bytes": 11396,
       "imports": [
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/client/components/action-async-storage.external.js",
@@ -2788,7 +2788,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js": {
-      "bytes": 248188,
+      "bytes": 334921,
       "imports": [
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/client/components/action-async-storage.external.js",
@@ -2824,7 +2824,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/node_modules/next/dist/server/require.js": {
-      "bytes": 13398,
+      "bytes": 64824,
       "imports": [
         {
           "path": "path",
@@ -2874,27 +2874,27 @@
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js"
         }
       ],
       "format": "cjs"
@@ -3276,22 +3276,22 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/node_modules/next/dist/server/future/helpers/module-loader/node-module-loader.js": {
-      "bytes": 1064,
+      "bytes": 1031,
       "imports": [
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_app.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_error.js"
         },
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/.next/server/pages/_document.js"
         }
       ],
       "format": "cjs"
@@ -3855,7 +3855,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/node_modules/next/dist/server/next-server.js": {
-      "bytes": 49911,
+      "bytes": 49900,
       "imports": [
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/server/node-environment.js",
@@ -4130,7 +4130,7 @@
         {
           "path": ".open-next/server-functions/default/stonepot-restaurant-client/cache.cjs",
           "kind": "require-call",
-          "original": "/Users/stonepot-tech/projects/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/cache.cjs"
+          "original": "/Users/suyesh/work/stonepot/stonepot-restaurant-client/.open-next/server-functions/default/stonepot-restaurant-client/cache.cjs"
         },
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/experimental/testmode/server.js",
@@ -4171,7 +4171,7 @@
       "format": "esm"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/index.mjs": {
-      "bytes": 91290,
+      "bytes": 91302,
       "imports": [
         {
           "path": "node:process",
@@ -5187,13 +5187,13 @@
           "bytesInOutput": 586
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page_client-reference-manifest.js": {
-          "bytesInOutput": 3169
+          "bytesInOutput": 3210
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page_client-reference-manifest.js": {
-          "bytesInOutput": 3283
+          "bytesInOutput": 3313
         },
         ".open-next/server-functions/default/node_modules/next/dist/server/load-manifest.js": {
-          "bytesInOutput": 9744
+          "bytesInOutput": 9734
         },
         ".open-next/server-functions/default/node_modules/react/cjs/react.production.min.js": {
           "bytesInOutput": 6806
@@ -5208,7 +5208,7 @@
           "bytesInOutput": 198
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/chunks/276.js": {
-          "bytesInOutput": 178895
+          "bytesInOutput": 178829
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/chunks/818.js": {
           "bytesInOutput": 34844
@@ -5268,13 +5268,13 @@
           "bytesInOutput": 352801
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js": {
-          "bytesInOutput": 3546
+          "bytesInOutput": 11677
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js": {
-          "bytesInOutput": 272539
+          "bytesInOutput": 361795
         },
         ".open-next/server-functions/default/node_modules/next/dist/server/require.js": {
-          "bytesInOutput": 10639
+          "bytesInOutput": 57422
         },
         ".open-next/server-functions/default/node_modules/next/dist/lib/interop-default.js": {
           "bytesInOutput": 363
@@ -5448,10 +5448,10 @@
           "bytesInOutput": 660
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/index.mjs": {
-          "bytesInOutput": 62199
+          "bytesInOutput": 62198
         }
       },
-      "bytes": 2138271
+      "bytes": 2282435
     }
   }
 }

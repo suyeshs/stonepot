@@ -19,6 +19,9 @@ export class DisplayRpcClient {
 
     // RPC session cache by session ID
     this.rpcSessions = new Map();
+
+    // Track critical display states (prevent accidental clearing during payment flow)
+    this.criticalDisplays = new Map(); // sessionId -> display type
   }
 
   /**
@@ -219,18 +222,58 @@ export class DisplayRpcClient {
   /**
    * Clear current display
    * @param {string} sessionId
+   * @param {boolean} force - Force clear even if critical display is active
    * @returns {Promise<void>}
    */
-  async clearDisplay(sessionId) {
+  async clearDisplay(sessionId, force = false) {
     try {
+      // Check if there's a critical display in progress
+      const criticalDisplay = this.criticalDisplays.get(sessionId);
+      if (criticalDisplay && !force) {
+        console.warn('[DisplayRpcClient] Cannot clear display - critical flow in progress:', criticalDisplay);
+        console.warn('[DisplayRpcClient] Use clearDisplay(sessionId, true) to force clear if needed');
+        return; // Don't clear critical displays
+      }
+
       const stub = await this.getRpcStub(sessionId);
       await stub.clearDisplay();
+
+      // Remove from critical displays if cleared
+      this.criticalDisplays.delete(sessionId);
 
       console.log('[DisplayRpcClient] Display cleared');
     } catch (error) {
       console.error('[DisplayRpcClient] Failed to clear display:', error);
       throw error;
     }
+  }
+
+  /**
+   * Mark a display as critical (prevents accidental clearing)
+   * @param {string} sessionId
+   * @param {string} displayType - Type of critical display (e.g., 'checkout_summary', 'payment_pending')
+   */
+  markCriticalDisplay(sessionId, displayType) {
+    this.criticalDisplays.set(sessionId, displayType);
+    console.log('[DisplayRpcClient] Marked critical display:', sessionId, displayType);
+  }
+
+  /**
+   * Unmark a critical display (allows clearing)
+   * @param {string} sessionId
+   */
+  unmarkCriticalDisplay(sessionId) {
+    this.criticalDisplays.delete(sessionId);
+    console.log('[DisplayRpcClient] Unmarked critical display:', sessionId);
+  }
+
+  /**
+   * Check if session has a critical display active
+   * @param {string} sessionId
+   * @returns {boolean}
+   */
+  hasCriticalDisplay(sessionId) {
+    return this.criticalDisplays.has(sessionId);
   }
 
   /**

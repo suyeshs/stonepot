@@ -17,6 +17,7 @@ export async function fetchTheme(preset: string = DEFAULT_PRESET): Promise<Multi
   const url = `${THEME_WORKER_URL}/api/multimodal-restaurant/themes/${preset}`;
 
   try {
+    console.log(`[Theme Loader] Fetching theme from: ${url}`);
     const response = await fetch(url, {
       next: {
         revalidate: CACHE_DURATION, // ISR: revalidate every 1 hour
@@ -24,14 +25,17 @@ export async function fetchTheme(preset: string = DEFAULT_PRESET): Promise<Multi
     });
 
     if (!response.ok) {
-      console.error(`Failed to fetch theme: ${response.status} ${response.statusText}`);
+      console.error(`[Theme Loader] Failed to fetch theme: ${response.status} ${response.statusText}`);
+      console.log('[Theme Loader] Using fallback theme');
       return getDefaultTheme();
     }
 
     const data: ThemeResponse = await response.json();
+    console.log('[Theme Loader] Theme loaded successfully:', data.theme.meta.name);
     return data.theme;
   } catch (error) {
-    console.error('Error fetching theme:', error);
+    console.error('[Theme Loader] Error fetching theme:', error);
+    console.log('[Theme Loader] Using fallback theme');
     return getDefaultTheme();
   }
 }

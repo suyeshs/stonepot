@@ -40,7 +40,7 @@ new_classes = ["RpcSessionManager"]
 # id = "your-kv-namespace-id"
 
 [vars]
-ALLOWED_ORIGINS = "http://localhost:3000,https://stonepot-restaurant-client.suyesh.workers.dev"
+ALLOWED_ORIGINS = "*"
 BACKEND_URL = "https://stonepot-restaurant-334610188311.us-central1.run.app"
 
 # Secrets (set with: wrangler secret put <NAME>)

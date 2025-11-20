@@ -121,6 +121,12 @@ export const sharedConfig = {
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID
   },
 
+  // PartyKit configuration
+  partykit: {
+    url: process.env.PARTYKIT_URL || 'https://stonepot-collaborative-orders.suyeshs.partykit.dev',
+    wsUrl: process.env.PARTYKIT_WS_URL || 'wss://stonepot-collaborative-orders.suyeshs.partykit.dev'
+  },
+
   // Environment
   environment: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',

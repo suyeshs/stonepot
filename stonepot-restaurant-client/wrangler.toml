@@ -12,6 +12,8 @@ assets = { directory = ".open-next/assets", binding = "ASSETS" }
 [vars]
 NEXT_PUBLIC_WORKER_URL = "https://stonepot-restaurant-display.suyesh.workers.dev"
 NEXT_PUBLIC_API_URL = "https://stonepot-restaurant-334610188311.us-central1.run.app"
+NEXT_PUBLIC_THEME_WORKER_URL = "https://theme-edge-worker.suyesh.workers.dev"
+NEXT_PUBLIC_THEME_PRESET = "coorg-food-company"
 
 # Durable Objects for OpenNext
 [[durable_objects.bindings]]

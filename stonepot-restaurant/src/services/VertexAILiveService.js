@@ -8,6 +8,14 @@ import { GoogleAuth } from 'google-auth-library';
 import WebSocket from 'ws';
 import { DisplayApiClient } from './DisplayApiClient.js';
 import { llmConfigService } from './LLMConfigService.js';
+import { getCustomerService } from './CustomerService.js';
+import { getCircleService } from './CircleService.js';
+import { GoogleMapsService } from './GoogleMapsService.js';
+import { DeliveryService } from './DeliveryService.js';
+import { PaymentService } from './PaymentService.js';
+import { MockPaymentService } from './MockPaymentService.js';
+import { TaxService } from './TaxService.js';
+import { FileSearchService } from './FileSearchService.js';
 
 export class VertexAILiveService {
   constructor(config) {
@@ -21,8 +29,35 @@ export class VertexAILiveService {
     // Initialize Display API Client (HTTP POST to Durable Object)
     this.displayClient = new DisplayApiClient(config);
 
+    // Initialize File Search Service for scalable menu retrieval
+    this.fileSearchService = new FileSearchService(config);
+
     // Initialize LLM Config Service
     this.llmConfigService = llmConfigService;
+
+    // Initialize Customer Service
+    this.customerService = getCustomerService(config);
+
+    // Initialize Circle Service
+    this.circleService = getCircleService(config);
+
+    // Initialize Google Maps Service
+    this.googleMapsService = new GoogleMapsService(config);
+
+    // Initialize Delivery Service
+    this.deliveryService = new DeliveryService(config, this.googleMapsService);
+
+    // Initialize Payment Service (Mock or Real based on config)
+    if (config.razorpay.useMock) {
+      console.log('[VertexAILive] Using MOCK Payment Service for testing');
+      this.paymentService = new MockPaymentService();
+    } else {
+      console.log('[VertexAILive] Using Real Razorpay Payment Service');
+      this.paymentService = new PaymentService(config);
+    }
+
+    // Initialize Tax Service
+    this.taxService = new TaxService(config.tax);
   }
 
   async initialize() {
@@ -79,9 +114,13 @@ export class VertexAILiveService {
 
       console.log('[VertexAILive] Creating session', { sessionId, tenantId, language, userId });
 
-      // Initialize display session
+      // Initialize display session (non-critical - will auto-init on first update)
       if (tenantId) {
-        await this.displayClient.initializeSession(sessionId, tenantId, 'restaurant');
+        try {
+          await this.displayClient.initializeSession(sessionId, tenantId, 'restaurant');
+        } catch (error) {
+          console.warn('[VertexAILive] Display init failed (non-critical):', error.message);
+        }
       }
 
       // Get access token for WebSocket auth
@@ -116,8 +155,25 @@ export class VertexAILiveService {
         });
       });
 
-      // Build system instruction for restaurant ordering
-      const systemInstruction = this.buildRestaurantSystemPrompt(language, { ...sessionConfig, sessionId });
+      // Pre-load menu context from File Search (if enabled)
+      let menuContext = null;
+      if (this.fileSearchService.isAvailableForTenant(tenantId)) {
+        try {
+          console.log('[VertexAILive] Pre-loading menu from File Search...');
+          menuContext = await this.fileSearchService.getMenuContext(tenantId, language);
+          console.log('[VertexAILive] File Search menu loaded:', menuContext.length, 'characters');
+        } catch (error) {
+          console.error('[VertexAILive] File Search failed, will use static menu fallback:', error.message);
+          menuContext = null; // Will trigger fallback in buildRestaurantSystemPrompt
+        }
+      }
+
+      // Build system instruction for restaurant ordering (with menu context)
+      const systemInstruction = this.buildRestaurantSystemPrompt(language, {
+        ...sessionConfig,
+        sessionId,
+        menuContext // Pass File Search results or null for fallback
+      });
 
       // Get function declarations for restaurant operations
       const functionDeclarations = this.getRestaurantFunctionDeclarations();
@@ -136,6 +192,8 @@ export class VertexAILiveService {
           customer: {
             name: null,
             phone: null,
+            email: null,
+            deliveryAddress: null,
             confirmedAt: null
           },
           cart: {
@@ -210,9 +268,16 @@ export class VertexAILiveService {
     // Build config-based instructions
     const configInstructions = this.llmConfigService.buildSystemInstructions(llmConfig);
 
-    // Build menu context from menuItems
+    // Build menu context - prioritize File Search results over static menu
     let menuContext = '';
-    if (sessionConfig.menuItems && sessionConfig.menuItems.length > 0) {
+
+    if (sessionConfig.menuContext) {
+      // Use File Search pre-loaded menu context (already formatted)
+      console.log('[VertexAILive] Using File Search menu context');
+      menuContext = '\n\n**MENU INFORMATION (from File Search):**\n' + sessionConfig.menuContext;
+    } else if (sessionConfig.menuItems && sessionConfig.menuItems.length > 0) {
+      // Fallback to static menu formatting
+      console.log('[VertexAILive] Using static menu fallback');
       menuContext = '\n\n**AVAILABLE MENU ITEMS:**\n';
 
       // Group by category for better organization
@@ -237,6 +302,8 @@ export class VertexAILiveService {
       });
 
       menuContext += `\nUse this menu to help customers discover dishes and answer questions about what's available.`;
+    } else {
+      console.warn('[VertexAILive] No menu context available - neither File Search nor static menu provided');
     }
 
     const basePrompts = {
@@ -257,10 +324,89 @@ export class VertexAILiveService {
 
 **Conversation Flow:**
 - Start with a simple greeting and let them tell you what they want
-- If they mention a dish, show them the details and help them add it to cart
+- If they mention a dish, show them the details and help them add it to their order
 - Build their order naturally - no need to ask "anything else?" after every item
 - When they seem ready, guide them toward checkout
 - IMPORTANT: Track the conversation context - if they already answered a question, reference it instead of asking again
+
+**Order Modifications:**
+- When customer asks to remove/delete an item:
+  1. First call get_cart_items (silently retrieves items with IDs)
+  2. Find the matching item by name from the returned items
+  3. Then immediately call update_cart_item with the correct itemId and action='remove'
+  4. Do NOT ask for confirmation - execute directly
+  5. Briefly confirm the removal (e.g., "Removed biryani from your order")
+- When customer asks to change quantity, follow the same pattern: get_cart_items first, then update_cart_item
+- If customer asks "what's in my order?" or wants to review, call show_cart_summary to display it visually
+- After removing an item, ask if they want to add anything else
+
+**Collaborative Ordering & Circles:**
+- When customer wants to create a family/friends group, call create_circle with circleName and circleType ('family' or 'friends')
+  Example: "Create a family circle called Sharma Family" → call create_circle with circleName="Sharma Family", circleType="family"
+- To invite members to a circle, call invite_to_circle with circleId, inviteeName, and inviteePhone
+- To start a group order with a circle, call start_collaborative_order with circleName
+  Example: "Start a group order with Sharma Family" → call start_collaborative_order with circleName="Sharma Family"
+- During collaborative orders, all add_item calls automatically sync to all participants in real-time
+- When ready to finalize, call finalize_collaborative_order to complete the group order
+
+**Collecting Customer Information:**
+- When collecting phone numbers, ask the customer to say each digit clearly
+- CRITICAL: Store phone numbers as strings with all 10 digits intact (e.g., "9876543210")
+- After hearing the number, confirm it back digit-by-digit: "Let me confirm: nine, eight, seven, six..."
+- NEVER convert phone numbers to numerical format or spoken words like "nine million"
+- If collecting delivery address, ask for street, apartment/flat, landmark, and pincode separately
+- For email, spell it out clearly and confirm the spelling
+
+**Using Customer Order History:**
+- When you call capture_customer_info with a phone number, the system automatically retrieves their past orders
+- The function will return order history in the response, including items they've ordered before
+- Use this information to:
+  * Greet returning customers warmly: "Welcome back! I see you enjoyed our [dish] last time"
+  * Make personalized recommendations based on their previous orders
+  * Offer to reorder their favorite dishes: "Would you like to order the [dish] again?"
+  * Build a rapport by remembering their preferences
+- If it's a new customer (no order history), focus on helping them discover the menu
+- ALWAYS use the order history context provided by capture_customer_info to personalize the experience
+
+**Order Completion & Delivery Flow:**
+- When the customer is ready to place their order, guide them through these steps naturally:
+
+1. **Customer Information** (if not already collected):
+   - Collect name and phone number using capture_customer_info
+   - Ask for email if they want order updates (optional)
+
+2. **Delivery Address Verification** (for delivery orders):
+   - Ask the customer to describe their delivery address verbally
+   - Include street/area, nearby landmark if possible, and pincode
+   - Call verify_delivery_address with their address description
+   - The system will check if delivery is available and show delivery fee/time
+   - If address verification fails or delivery is not available:
+     * Politely inform them we cannot deliver to that location
+     * Offer pickup or dine-in as alternatives
+     * Ask if they'd like to try a different address
+
+3. **Order Type & Payment Preference**:
+   - Ask if they want delivery, pickup, or dine-in
+   - For delivery orders, verify address first (step 2)
+   - Ask payment preference: "Would you like to pay online or cash on delivery/pickup?"
+   - For any special instructions (gate code, floor number, etc.), collect them
+
+4. **Order Finalization**:
+   - Review the complete order with customer (items, delivery details, total)
+   - Call finalize_order with orderType, paymentMethod, and any special instructions
+   - For online payment:
+     * System will create Razorpay order
+     * Display will show payment interface for customer to complete
+     * Confirm once payment is successful
+   - For cash payment:
+     * Order is confirmed immediately
+     * Provide order ID and estimated delivery/ready time
+
+**Handling Order Flow Issues:**
+- If customer wants delivery but address cannot be verified, offer pickup/dine-in
+- If payment fails, offer to retry or switch to cash payment
+- Always provide order confirmation with order ID and estimated time
+- If customer seems confused about next steps, guide them gently
 
 **Critical Safety Note:**
 When dietary restrictions or allergies come up, remind customers to inform our kitchen staff directly for safe food preparation.
@@ -361,7 +507,7 @@ ${configInstructions}`,
       // Customer Information
       {
         name: 'capture_customer_info',
-        description: 'Store customer name and phone number when provided during the conversation',
+        description: 'Store customer information when provided during the conversation. IMPORTANT: Phone numbers must be captured as strings with all digits intact (e.g., "9876543210" not "nine million...").',
         parameters: {
           type: 'object',
           properties: {
@@ -371,7 +517,23 @@ ${configInstructions}`,
             },
             phone: {
               type: 'string',
-              description: 'Phone number (10 digits)'
+              description: 'Phone number as a string of exactly 10 digits (e.g., "9876543210"). Never convert to numeric format or spoken words.'
+            },
+            email: {
+              type: 'string',
+              description: 'Customer email address (optional)'
+            },
+            deliveryAddress: {
+              type: 'object',
+              description: 'Delivery address details (optional)',
+              properties: {
+                street: { type: 'string' },
+                apartment: { type: 'string' },
+                city: { type: 'string' },
+                state: { type: 'string' },
+                pincode: { type: 'string' },
+                landmark: { type: 'string' }
+              }
             }
           },
           required: ['name', 'phone']
@@ -421,7 +583,7 @@ ${configInstructions}`,
 
       {
         name: 'update_cart_item',
-        description: 'Modify quantity or remove item from cart',
+        description: 'Immediately modify quantity or remove item from cart when customer requests it. Execute the action directly without asking for confirmation.',
         parameters: {
           type: 'object',
           properties: {
@@ -432,7 +594,7 @@ ${configInstructions}`,
             action: {
               type: 'string',
               enum: ['increase', 'decrease', 'remove'],
-              description: 'Action to perform on the item'
+              description: 'Action to perform: increase (add 1), decrease (subtract 1), remove (delete completely)'
             },
             newQuantity: {
               type: 'number',
@@ -444,8 +606,85 @@ ${configInstructions}`,
       },
 
       {
+        name: 'get_cart_items',
+        description: 'Silently retrieve current cart items with their IDs. Use this before update_cart_item to get the correct itemId. Does not display anything to the customer.',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+
+      {
         name: 'show_cart_summary',
-        description: 'Display current cart with all items and total',
+        description: 'Display current cart with all items and total to the customer. Use only when customer explicitly asks to see their cart.',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+
+      // Circle Management
+      {
+        name: 'create_circle',
+        description: 'Create a family or friends circle for collaborative ordering. Use when customer wants to set up group ordering.',
+        parameters: {
+          type: 'object',
+          properties: {
+            circleName: {
+              type: 'string',
+              description: 'Name for the circle (e.g., "Sharma Family", "Office Friends")'
+            },
+            circleType: {
+              type: 'string',
+              enum: ['family', 'friends'],
+              description: 'Type of circle: family or friends'
+            }
+          },
+          required: ['circleName', 'circleType']
+        }
+      },
+
+      {
+        name: 'invite_to_circle',
+        description: 'Invite someone to join a circle by their phone number and name.',
+        parameters: {
+          type: 'object',
+          properties: {
+            circleId: {
+              type: 'string',
+              description: 'ID of the circle to invite to'
+            },
+            inviteeName: {
+              type: 'string',
+              description: 'Name of the person being invited'
+            },
+            inviteePhone: {
+              type: 'string',
+              description: 'Phone number of the person being invited (10 digits)'
+            }
+          },
+          required: ['circleId', 'inviteeName', 'inviteePhone']
+        }
+      },
+
+      {
+        name: 'start_collaborative_order',
+        description: 'Start a collaborative group order for a circle. Returns PartyKit room URL for real-time ordering.',
+        parameters: {
+          type: 'object',
+          properties: {
+            circleId: {
+              type: 'string',
+              description: 'ID of the circle to start collaborative order for'
+            }
+          },
+          required: ['circleId']
+        }
+      },
+
+      {
+        name: 'get_my_circles',
+        description: 'Get list of circles the current customer belongs to.',
         parameters: {
           type: 'object',
           properties: {}
@@ -477,6 +716,60 @@ ${configInstructions}`,
             total: { type: 'number' }
           },
           required: ['items', 'total']
+        }
+      },
+
+      // Address & Delivery
+      {
+        name: 'verify_delivery_address',
+        description: 'Verify and geocode delivery address from verbal description. Call this when customer provides delivery address. Returns coordinates and delivery eligibility.',
+        parameters: {
+          type: 'object',
+          properties: {
+            addressDescription: {
+              type: 'string',
+              description: 'Full address description from customer (e.g., "123 MG Road, near Big Bazaar, Koramangala, Bangalore")'
+            },
+            landmark: {
+              type: 'string',
+              description: 'Nearby landmark for easier location (optional)'
+            },
+            pincode: {
+              type: 'string',
+              description: 'Postal code/pincode (optional but recommended)'
+            }
+          },
+          required: ['addressDescription']
+        }
+      },
+
+      // Order Finalization & Payment
+      {
+        name: 'finalize_order',
+        description: 'Complete the order and initiate payment process. Call this when customer is ready to pay and place their order. Requires cart and customer info to be already captured.',
+        parameters: {
+          type: 'object',
+          properties: {
+            orderType: {
+              type: 'string',
+              enum: ['delivery', 'pickup', 'dine-in'],
+              description: 'Type of order: delivery (requires address), pickup (customer collects), or dine-in'
+            },
+            paymentMethod: {
+              type: 'string',
+              enum: ['online', 'cash'],
+              description: 'Payment method: online (UPI/cards/wallets via Razorpay) or cash (COD/pay-at-counter)'
+            },
+            deliveryTime: {
+              type: 'string',
+              description: 'Preferred delivery/pickup time (e.g., "ASAP", "7:00 PM", "in 1 hour") - optional'
+            },
+            specialInstructions: {
+              type: 'string',
+              description: 'Any special instructions (e.g., "ring the bell", "contactless delivery", "extra spicy") - optional'
+            }
+          },
+          required: ['orderType', 'paymentMethod']
         }
       }
     ];
@@ -653,20 +946,79 @@ ${configInstructions}`,
     try {
       switch (name) {
         case 'capture_customer_info':
+          // Store in session
           session.orderState.customer = {
             name: args.name,
             phone: args.phone,
+            email: args.email || null,
+            deliveryAddress: args.deliveryAddress || null,
             confirmedAt: Date.now()
           };
 
-          // Persist to Firebase
+          // Persist to Firebase session
           await this.persistSessionState(session);
 
-          result = {
-            success: true,
-            message: `Customer info saved: ${args.name}`,
-            customer: session.orderState.customer
-          };
+          // Upsert customer in customers collection
+          try {
+            const customerResult = await this.customerService.upsertCustomer(
+              session.tenantId,
+              {
+                phone: args.phone,
+                name: args.name,
+                email: args.email,
+                deliveryAddress: args.deliveryAddress
+              }
+            );
+
+            // Fetch customer's order history
+            let orderHistory = [];
+            let orderSummary = '';
+            try {
+              orderHistory = await this.customerService.getCustomerOrders(
+                session.tenantId,
+                args.phone,
+                5 // Get last 5 orders
+              );
+
+              // Store in session for context
+              session.orderState.customerOrderHistory = orderHistory;
+
+              if (orderHistory.length > 0) {
+                orderSummary = `Customer has ${orderHistory.length} previous order(s). `;
+                orderSummary += `Recent orders: ${orderHistory.map((order, idx) => {
+                  const items = order.items?.slice(0, 3).map(i => i.dishName || i.name).join(', ') || 'items';
+                  const remaining = order.items?.length > 3 ? ` +${order.items.length - 3} more` : '';
+                  return `${idx + 1}) ${items}${remaining} (₹${order.total})`;
+                }).join('; ')}. `;
+                orderSummary += 'You can suggest items from their previous orders or help them reorder.';
+              } else {
+                orderSummary = 'This is a new customer with no previous orders.';
+              }
+            } catch (historyError) {
+              console.warn('[VertexAILive] Could not fetch order history:', historyError);
+              orderSummary = 'Could not load order history.';
+            }
+
+            await this.persistSessionState(session);
+
+            result = {
+              success: true,
+              message: `Customer info saved: ${args.name}. ${orderSummary}`,
+              customer: session.orderState.customer,
+              customerId: customerResult.customerId,
+              isNewCustomer: customerResult.isNew,
+              orderHistory: orderHistory,
+              orderHistoryCount: orderHistory.length
+            };
+          } catch (error) {
+            console.error('[VertexAILive] Error upserting customer:', error);
+            result = {
+              success: true,
+              message: `Customer info saved to session: ${args.name}`,
+              customer: session.orderState.customer,
+              warning: 'Could not persist to customer database'
+            };
+          }
           break;
 
         case 'show_dish_details':
@@ -681,6 +1033,24 @@ ${configInstructions}`,
           result = await this.updateCartItem(session, args);
           break;
 
+        case 'get_cart_items':
+          // Silently return cart items without displaying to user
+          result = {
+            success: true,
+            cart: session.orderState.cart,
+            items: session.orderState.cart.items.map(item => ({
+              id: item.id,
+              dishName: item.dishName,
+              quantity: item.quantity,
+              price: item.price,
+              itemTotal: item.itemTotal
+            })),
+            message: session.orderState.cart.items.length > 0
+              ? `Current cart items: ${session.orderState.cart.items.map(i => `${i.dishName} (id: ${i.id}, qty: ${i.quantity})`).join(', ')}`
+              : 'Cart is empty'
+          };
+          break;
+
         case 'show_cart_summary':
           if (session.tenantId) {
             await this.displayClient.sendOrderSummary(
@@ -693,6 +1063,140 @@ ${configInstructions}`,
             cart: session.orderState.cart,
             message: `Cart has ${session.orderState.cart.items.length} items, total ₹${session.orderState.cart.total}`
           };
+          break;
+
+        // Circle Management
+        case 'create_circle':
+          if (!session.orderState.customer.phone) {
+            result = {
+              success: false,
+              message: 'Please provide your contact information first to create a circle'
+            };
+            break;
+          }
+
+          try {
+            const circleResult = await this.circleService.createCircle(
+              session.tenantId,
+              session.orderState.customer.phone,
+              args.circleName,
+              args.circleType
+            );
+
+            result = {
+              success: true,
+              circle: circleResult.circle,
+              message: `Created ${args.circleType} circle "${args.circleName}". You can now invite members.`
+            };
+          } catch (error) {
+            console.error('[VertexAILive] Error creating circle:', error);
+            result = {
+              success: false,
+              message: 'Failed to create circle. Please try again.'
+            };
+          }
+          break;
+
+        case 'invite_to_circle':
+          if (!session.orderState.customer.phone) {
+            result = {
+              success: false,
+              message: 'Please provide your contact information first'
+            };
+            break;
+          }
+
+          try {
+            const inviteResult = await this.circleService.inviteToCircle(
+              args.circleId,
+              session.orderState.customer.phone,
+              args.inviteePhone,
+              args.inviteeName
+            );
+
+            result = {
+              success: inviteResult.success,
+              circle: inviteResult.circle,
+              message: inviteResult.success
+                ? `${args.inviteeName} has been added to the circle`
+                : inviteResult.message
+            };
+          } catch (error) {
+            console.error('[VertexAILive] Error inviting to circle:', error);
+            result = {
+              success: false,
+              message: 'Failed to add member. Please check the circle ID and try again.'
+            };
+          }
+          break;
+
+        case 'start_collaborative_order':
+          if (!session.orderState.customer.phone) {
+            result = {
+              success: false,
+              message: 'Please provide your contact information first'
+            };
+            break;
+          }
+
+          try {
+            const collaborativeOrderResult = await this.circleService.startCollaborativeOrder(
+              args.circleId,
+              session.orderState.customer.phone,
+              session.id
+            );
+
+            // Generate PartyKit room URL
+            const partykitWsUrl = `${this.config.partykit.wsUrl}/parties/collaborative_order/${collaborativeOrderResult.collaborativeOrder.id}`;
+
+            result = {
+              success: true,
+              collaborativeOrder: collaborativeOrderResult.collaborativeOrder,
+              partykitRoomUrl: partykitWsUrl,
+              message: `Started collaborative order for your circle. Share this session to let others join!`
+            };
+
+            // Store collaborative order ID in session
+            session.orderState.collaborativeOrderId = collaborativeOrderResult.collaborativeOrder.id;
+            await this.persistSessionState(session);
+          } catch (error) {
+            console.error('[VertexAILive] Error starting collaborative order:', error);
+            result = {
+              success: false,
+              message: 'Failed to start collaborative order. Please check the circle ID and try again.'
+            };
+          }
+          break;
+
+        case 'get_my_circles':
+          if (!session.orderState.customer.phone) {
+            result = {
+              success: false,
+              message: 'Please provide your contact information first'
+            };
+            break;
+          }
+
+          try {
+            const circles = await this.circleService.getCustomerCircles(
+              session.tenantId,
+              session.orderState.customer.phone
+            );
+
+            result = {
+              success: true,
+              circles,
+              message: circles.length > 0
+                ? `You are in ${circles.length} circle(s): ${circles.map(c => c.name).join(', ')}`
+                : 'You are not in any circles yet. Would you like to create one?'
+            };
+          } catch (error) {
+            console.error('[VertexAILive] Error getting circles:', error);
+            result = {
+              success: false,
+              message: 'Failed to retrieve circles'
+            };
+          }
           break;
 
         // Legacy support
@@ -710,6 +1214,297 @@ ${configInstructions}`,
             await this.displayClient.sendOrderSummary(session.id, args);
           }
           result = { success: true, message: 'Order summary updated' };
+          break;
+
+        case 'verify_delivery_address':
+          try {
+            // Build full address string
+            let addressString = args.addressDescription;
+            if (args.landmark) {
+              addressString += `, Near ${args.landmark}`;
+            }
+            if (args.pincode) {
+              addressString += `, ${args.pincode}`;
+            }
+
+            console.log('[VertexAILive] Verifying delivery address:', addressString);
+
+            // Geocode the address
+            const geocodeResult = await this.googleMapsService.geocodeAddress(addressString);
+
+            // Extract address components
+            const pincode = this.googleMapsService.extractPincode(geocodeResult.addressComponents);
+            const city = this.googleMapsService.extractCity(geocodeResult.addressComponents);
+            const state = this.googleMapsService.extractState(geocodeResult.addressComponents);
+
+            // Store verified address in session
+            session.orderState.deliveryAddress = {
+              formatted: geocodeResult.formattedAddress,
+              coordinates: {
+                lat: geocodeResult.lat,
+                lng: geocodeResult.lng
+              },
+              placeId: geocodeResult.placeId,
+              pincode,
+              city,
+              state,
+              verifiedAt: Date.now()
+            };
+
+            await this.persistSessionState(session);
+
+            // Send address verification display update
+            if (session.tenantId) {
+              await this.displayClient.sendUpdate(session.id, {
+                type: 'address_verification',
+                data: {
+                  address: geocodeResult.formattedAddress,
+                  coordinates: {
+                    lat: geocodeResult.lat,
+                    lng: geocodeResult.lng
+                  },
+                  verified: true,
+                  deliverable: true,
+                  message: `Address verified: ${geocodeResult.formattedAddress}. We'll arrange delivery through our partner.`
+                }
+              });
+            }
+
+            result = {
+              success: true,
+              eligible: true,
+              address: {
+                formatted: geocodeResult.formattedAddress,
+                coordinates: { lat: geocodeResult.lat, lng: geocodeResult.lng },
+                pincode,
+                city,
+                state
+              },
+              message: `Address verified: ${geocodeResult.formattedAddress}. Delivery will be arranged through Porter.`
+            };
+          } catch (error) {
+            console.error('[VertexAILive] Address verification error:', error);
+
+            // Send address verification display update for error case
+            if (session.tenantId) {
+              await this.displayClient.sendUpdate(session.id, {
+                type: 'address_verification',
+                data: {
+                  address: args.addressDescription || 'Address not found',
+                  verified: false,
+                  deliverable: false,
+                  message: 'Unable to verify address. Please provide more details like pincode, landmark, or nearby area.'
+                }
+              });
+            }
+
+            result = {
+              success: false,
+              eligible: false,
+              message: 'Unable to verify address. Please provide more details like pincode, landmark, or nearby area.',
+              error: error.message
+            };
+          }
+          break;
+
+        case 'finalize_order':
+          try {
+            // Validate cart
+            if (!session.orderState.cart.items || session.orderState.cart.items.length === 0) {
+              result = {
+                success: false,
+                message: 'Cart is empty. Please add items before placing order.'
+              };
+              break;
+            }
+
+            // Validate customer info
+            if (!session.orderState.customer || !session.orderState.customer.name || !session.orderState.customer.phone) {
+              result = {
+                success: false,
+                message: 'Please provide your name and phone number first.'
+              };
+              break;
+            }
+
+            // Validate delivery address for delivery orders
+            if (args.orderType === 'delivery' && !session.orderState.deliveryAddress) {
+              result = {
+                success: false,
+                message: 'Please provide and verify your delivery address first.'
+              };
+              break;
+            }
+
+            console.log('[VertexAILive] Finalizing order:', {
+              orderType: args.orderType,
+              paymentMethod: args.paymentMethod,
+              items: session.orderState.cart.items.length
+            });
+
+            // Calculate totals using TaxService
+            const subtotal = session.orderState.cart.subtotal || 0;
+            const deliveryFee = args.orderType === 'delivery' ? (session.orderState.deliveryFee || 0) : 0;
+
+            // Calculate GST using TaxService
+            const taxCalculation = this.taxService.calculateOrderTax(subtotal, deliveryFee, args.orderType);
+            const tax = taxCalculation.gstAmount;
+            const total = taxCalculation.totalWithTax;
+
+            // Prepare order data
+            const orderData = {
+              orderId: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+              sessionId: session.id,
+              customer: {
+                name: session.orderState.customer.name,
+                phone: session.orderState.customer.phone,
+                email: session.orderState.customer.email || null
+              },
+              cart: {
+                items: session.orderState.cart.items,
+                subtotal,
+                tax,
+                deliveryFee,
+                total
+              },
+              orderType: args.orderType,
+              paymentMethod: args.paymentMethod,
+              deliveryAddress: args.orderType === 'delivery' ? session.orderState.deliveryAddress : null,
+              deliveryTime: args.deliveryTime || null,
+              specialInstructions: args.specialInstructions || null,
+              estimatedDeliveryTime: args.orderType === 'delivery' ? session.orderState.estimatedDeliveryTime : null,
+              status: args.paymentMethod === 'online' ? 'pending_payment' : 'confirmed',
+              createdAt: Date.now()
+            };
+
+            // Create order in Firebase
+            let savedOrder;
+            try {
+              savedOrder = await this.customerService.createOrder(
+                session.tenantId,
+                session.orderState.customer.phone,
+                orderData
+              );
+              console.log('[VertexAILive] Order saved to Firebase:', savedOrder.orderId);
+            } catch (error) {
+              console.error('[VertexAILive] Error saving order to Firebase:', error);
+              // Continue with order even if Firebase save fails
+            }
+
+            // Store order in session
+            session.orderState.finalizedOrder = orderData;
+            await this.persistSessionState(session);
+
+            // Send checkout summary display
+            if (session.tenantId) {
+              await this.displayClient.sendUpdate(session.id, {
+                type: 'checkout_summary',
+                data: {
+                  orderId: orderData.orderId,
+                  items: orderData.cart.items,
+                  subtotal: orderData.cart.subtotal,
+                  deliveryFee: orderData.cart.deliveryFee,
+                  tax: orderData.cart.tax,
+                  total: orderData.cart.total,
+                  orderType: orderData.orderType,
+                  paymentMethod: orderData.paymentMethod,
+                  deliveryAddress: orderData.deliveryAddress?.formatted,
+                  estimatedTime: orderData.estimatedDeliveryTime?.timeRange
+                }
+              });
+            }
+
+            // If online payment, create Razorpay order
+            if (args.paymentMethod === 'online') {
+              try {
+                const razorpayOrder = await this.paymentService.createPaymentOrder({
+                  amount: total,
+                  orderId: orderData.orderId,
+                  customer: orderData.customer,
+                  currency: 'INR'
+                });
+
+                session.orderState.razorpayOrderId = razorpayOrder.id;
+                await this.persistSessionState(session);
+
+                // Send payment pending display
+                if (session.tenantId) {
+                  await this.displayClient.sendUpdate(session.id, {
+                    type: 'payment_pending',
+                    data: {
+                      orderId: orderData.orderId,
+                      razorpayOrderId: razorpayOrder.id,
+                      amount: total,
+                      currency: 'INR',
+                      customer: orderData.customer
+                    }
+                  });
+                }
+
+                result = {
+                  success: true,
+                  order: orderData,
+                  razorpayOrder: {
+                    id: razorpayOrder.id,
+                    amount: razorpayOrder.amount,
+                    currency: razorpayOrder.currency
+                  },
+                  message: `Great! Your order is ready for checkout. Please complete the payment of ₹${total}.`,
+                  nextStep: 'payment'
+                };
+              } catch (error) {
+                console.error('[VertexAILive] Razorpay order creation error:', error);
+                result = {
+                  success: false,
+                  message: 'Failed to initiate payment. Please try again or choose cash payment.',
+                  error: error.message
+                };
+              }
+            } else {
+              // Cash payment - order is confirmed immediately
+              // Generate invoice/bill
+              const invoice = this.taxService.generateInvoice(orderData);
+              const billText = this.taxService.formatInvoiceText(invoice);
+
+              // Log the bill (in production, this would be sent to a printer or PDF generator)
+              console.log('\n' + '='.repeat(50));
+              console.log('BILL GENERATED:');
+              console.log('='.repeat(50));
+              console.log(billText);
+              console.log('='.repeat(50) + '\n');
+
+              if (session.tenantId) {
+                await this.displayClient.sendUpdate(session.id, {
+                  type: 'order_confirmed',
+                  data: {
+                    orderId: orderData.orderId,
+                    orderType: orderData.orderType,
+                    paymentMethod: 'cash',
+                    total: total,
+                    estimatedTime: orderData.estimatedDeliveryTime?.timeRange || '30-40 mins',
+                    message: 'Your order has been confirmed!',
+                    invoice: invoice, // Include invoice data
+                    billText: billText // Include formatted bill text
+                  }
+                });
+              }
+
+              result = {
+                success: true,
+                order: orderData,
+                invoice: invoice,
+                message: `Thank you for your order! Total is ₹${total} including GST. ${args.orderType === 'delivery' ? `Your food will be delivered in ${orderData.estimatedDeliveryTime?.timeRange || '30 to 40 minutes'}` : 'Please collect from the counter'}. You can pay cash on ${args.orderType === 'delivery' ? 'delivery' : 'pickup'}.`,
+                nextStep: 'confirmed'
+              };
+            }
+          } catch (error) {
+            console.error('[VertexAILive] Order finalization error:', error);
+            result = {
+              success: false,
+              message: 'Failed to finalize order. Please try again.',
+              error: error.message
+            };
+          }
           break;
 
         default:
