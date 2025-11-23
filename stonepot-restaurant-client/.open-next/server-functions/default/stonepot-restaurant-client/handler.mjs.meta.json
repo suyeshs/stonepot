@@ -2339,7 +2339,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/node_modules/next/dist/server/load-manifest.js": {
-      "bytes": 11349,
+      "bytes": 11391,
       "imports": [
         {
           "path": "fs",
@@ -2757,7 +2757,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js": {
-      "bytes": 11396,
+      "bytes": 11666,
       "imports": [
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/client/components/action-async-storage.external.js",
@@ -2788,7 +2788,7 @@
       "format": "cjs"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js": {
-      "bytes": 334921,
+      "bytes": 342397,
       "imports": [
         {
           "path": ".open-next/server-functions/default/node_modules/next/dist/client/components/action-async-storage.external.js",
@@ -4171,7 +4171,7 @@
       "format": "esm"
     },
     ".open-next/server-functions/default/stonepot-restaurant-client/index.mjs": {
-      "bytes": 91302,
+      "bytes": 91344,
       "imports": [
         {
           "path": "node:process",
@@ -5193,7 +5193,7 @@
           "bytesInOutput": 3313
         },
         ".open-next/server-functions/default/node_modules/next/dist/server/load-manifest.js": {
-          "bytesInOutput": 9734
+          "bytesInOutput": 9776
         },
         ".open-next/server-functions/default/node_modules/react/cjs/react.production.min.js": {
           "bytesInOutput": 6806
@@ -5268,10 +5268,10 @@
           "bytesInOutput": 352801
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/_not-found/page.js": {
-          "bytesInOutput": 11677
+          "bytesInOutput": 11959
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/.next/server/app/page.js": {
-          "bytesInOutput": 361795
+          "bytesInOutput": 369626
         },
         ".open-next/server-functions/default/node_modules/next/dist/server/require.js": {
           "bytesInOutput": 57422
@@ -5448,10 +5448,10 @@
           "bytesInOutput": 660
         },
         ".open-next/server-functions/default/stonepot-restaurant-client/index.mjs": {
-          "bytesInOutput": 62198
+          "bytesInOutput": 62240
         }
       },
-      "bytes": 2282435
+      "bytes": 2290632
     }
   }
 }

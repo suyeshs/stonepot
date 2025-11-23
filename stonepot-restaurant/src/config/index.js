@@ -82,7 +82,7 @@ export const config = {
   },
 
   cloudflare: {
-    workerUrl: process.env.CLOUDFLARE_WORKER_URL || 'https://stonepot-restaurant-display.suyesh.workers.dev',
+    workerUrl: process.env.CLOUDFLARE_WORKER_URL || 'https://theme-edge-worker.suyesh.workers.dev',
     authToken: process.env.CLOUDFLARE_AUTH_TOKEN
   },
 

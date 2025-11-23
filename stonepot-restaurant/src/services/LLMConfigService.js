@@ -47,8 +47,8 @@ class LLMConfigService {
         temperature: 0.7, // 0.0 to 1.0 - creativity vs consistency
         topP: 0.9, // 0.0 to 1.0 - diversity of responses
         topK: 40, // Number of top tokens to consider
-        frequencyPenalty: 0.0, // -2.0 to 2.0 - reduce repetition
-        presencePenalty: 0.0 // -2.0 to 2.0 - encourage new topics
+        frequencyPenalty: 0.4, // -2.0 to 2.0 - reduce repetition (production-tuned)
+        presencePenalty: 0.3 // -2.0 to 2.0 - encourage new topics (production-tuned)
       },
 
       // Language and localization
