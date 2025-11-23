@@ -8,6 +8,7 @@ import multer from 'multer';
 import { MenuManagementService } from '../services/MenuManagementService.js';
 import { ExcelParserService } from '../services/ExcelParserService.js';
 import { CloudflareImageService } from '../services/CloudflareImageService.js';
+import { SmartMenuParserService } from '../services/SmartMenuParserService.js';
 import { getFirebaseService } from '../services/FirebaseService.js';
 
 const router = express.Router();
@@ -25,7 +26,9 @@ const upload = multer({
       'image/jpeg',
       'image/png',
       'image/webp',
-      'image/heic'
+      'image/heic',
+      'application/pdf', // PDF support
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // .docx
     ];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
@@ -105,6 +108,74 @@ router.post('/upload-excel', upload.single('file'), async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/menu/upload-smart
+ * Smart AI-powered document parsing - accepts ANY menu format
+ * Supports: PDF, Excel, Word, Images (no template required)
+ */
+router.post('/upload-smart', upload.single('file'), async (req, res) => {
+  try {
+    const { tenantId } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
+      });
+    }
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenantId is required'
+      });
+    }
+
+    console.log('[MenuUpload] Smart parsing document', {
+      tenantId,
+      filename: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size
+    });
+
+    // Initialize smart parser
+    const smartParser = new SmartMenuParserService(req.app.locals.config);
+
+    // Parse document using Gemini AI
+    const result = await smartParser.parseDocument(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    // Validate and clean extracted items
+    const cleanedItems = smartParser.validateAndClean(result.items);
+
+    console.log('[MenuUpload] Smart parsing complete', {
+      itemCount: cleanedItems.length,
+      confidence: result.confidence,
+      originalCount: result.items.length
+    });
+
+    res.json({
+      success: true,
+      items: cleanedItems,
+      count: cleanedItems.length,
+      confidence: result.confidence,
+      metadata: result.metadata,
+      message: `Successfully extracted ${cleanedItems.length} menu items using AI (${Math.round(result.confidence * 100)}% confidence). Please review and confirm.`
+    });
+
+  } catch (error) {
+    console.error('[MenuUpload] Smart parsing error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      hint: 'Smart parsing failed. You can try the template-based upload instead.'
     });
   }
 });
