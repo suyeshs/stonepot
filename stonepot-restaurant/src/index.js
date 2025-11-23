@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import cors from 'cors';
 import { config } from './config/index.js';
 import restaurantRoutes, { setupWebSocketServer } from './routes/restaurantRoutes.js';
+import menuUploadRoutes from './routes/menuUploadRoutes.js';
 
 const app = express();
 const server = createServer(app);
@@ -57,6 +58,8 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/restaurant', restaurantRoutes);
+app.use('/api/admin/menu', menuUploadRoutes);
+app.use('/api/tenants', menuUploadRoutes);
 
 // Setup WebSocket server for audio streaming
 setupWebSocketServer(server);
