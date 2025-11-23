@@ -15,7 +15,7 @@ import { DeliveryService } from './DeliveryService.js';
 import { PaymentService } from './PaymentService.js';
 import { MockPaymentService } from './MockPaymentService.js';
 import { TaxService } from './TaxService.js';
-import { FileSearchService } from './FileSearchService.js';
+import { FileSearchService } from './FileSearchService.ts';
 
 export class VertexAILiveService {
   constructor(config) {
@@ -110,7 +110,7 @@ export class VertexAILiveService {
     }
 
     try {
-      const { tenantId, language = 'en', userId } = sessionConfig;
+      const { tenantId, language = 'en', userId, customerContext } = sessionConfig;
 
       console.log('[VertexAILive] Creating session', { sessionId, tenantId, language, userId });
 
@@ -189,13 +189,23 @@ export class VertexAILiveService {
 
         // Enhanced order state for complete order management
         orderState: {
-          customer: {
+          customer: customerContext?.customer ? {
+            name: customerContext.customer.name,
+            phone: customerContext.customer.phone,
+            email: customerContext.customer.email || null,
+            deliveryAddress: customerContext.customer.deliveryAddress || null,
+            confirmedAt: customerContext.customer.updatedAt || Date.now()
+          } : {
             name: null,
             phone: null,
             email: null,
             deliveryAddress: null,
             confirmedAt: null
           },
+
+          // Store order history for returning customers
+          customerOrderHistory: customerContext?.orderHistory || [],
+
           cart: {
             items: [],
             subtotal: 0,
@@ -226,6 +236,15 @@ export class VertexAILiveService {
         firebaseService: null
       };
 
+      // Log if returning customer was loaded
+      if (customerContext) {
+        console.log('[VertexAILive] Session created with returning customer context', {
+          sessionId,
+          customer: customerContext.customer.name,
+          orderHistory: customerContext.orderHistory.length
+        });
+      }
+
       // Setup WebSocket event handlers
       this.setupWebSocketHandlers(session);
 
@@ -247,13 +266,111 @@ export class VertexAILiveService {
         };
       });
 
-      console.log('[VertexAILive] Session ready', { sessionId });
+      // Start keep-alive mechanism to prevent idle disconnections
+      session.keepAliveInterval = setInterval(() => {
+        if (session.isActive && session.ws && session.ws.readyState === 1) { // 1 = OPEN
+          // Send empty media chunks to keep connection alive
+          const keepAlive = {
+            realtimeInput: {
+              mediaChunks: []
+            }
+          };
+          try {
+            session.ws.send(JSON.stringify(keepAlive));
+            console.log('[VertexAILive] Keep-alive sent', { sessionId });
+          } catch (error) {
+            console.error('[VertexAILive] Keep-alive send failed:', error);
+          }
+        }
+      }, 25000); // Every 25 seconds
+
+      console.log('[VertexAILive] Session ready with keep-alive', { sessionId });
 
       return session;
     } catch (error) {
       console.error('[VertexAILive] Session creation failed', { sessionId, error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Build "Known Facts" summary from session order state
+   * This prevents the LLM from re-asking information already collected
+   */
+  buildKnownFactsSummary(session) {
+    const facts = [];
+    const customer = session.orderState?.customer;
+    const cart = session.orderState?.cart;
+    const orderHistory = session.orderState?.customerOrderHistory || [];
+
+    if (!customer && (!cart || !cart.items || cart.items.length === 0) && orderHistory.length === 0) {
+      return ''; // No facts collected yet
+    }
+
+    facts.push('\n**KNOWN FACTS - DO NOT RE-ASK:**');
+
+    // Customer information
+    if (customer && customer.phone) {
+      if (customer.name) {
+        facts.push(`- Customer name: ${customer.name}`);
+      }
+      facts.push(`- Phone number: ${customer.phone}`);
+      if (customer.email) {
+        facts.push(`- Email: ${customer.email}`);
+      }
+      if (customer.deliveryAddress) {
+        const addr = typeof customer.deliveryAddress === 'object'
+          ? customer.deliveryAddress.formatted
+          : customer.deliveryAddress;
+        if (addr) {
+          facts.push(`- Delivery address: ${addr}`);
+        }
+      }
+      if (customer.dietaryRestrictions && customer.dietaryRestrictions.length > 0) {
+        facts.push(`- Dietary restrictions: ${customer.dietaryRestrictions.join(', ')}`);
+      }
+      if (customer.allergies && customer.allergies.length > 0) {
+        facts.push(`- Allergies: ${customer.allergies.join(', ')}`);
+      }
+      if (customer.spicePreference) {
+        facts.push(`- Spice preference: ${customer.spicePreference}/5`);
+      }
+    }
+
+    // Order history for returning customers
+    if (orderHistory.length > 0) {
+      facts.push(`\n**CUSTOMER ORDER HISTORY:**`);
+      facts.push(`- This is a RETURNING CUSTOMER with ${orderHistory.length} previous order(s)`);
+      facts.push(`- Recent orders:`);
+      orderHistory.slice(0, 3).forEach((order, idx) => {
+        const items = order.items?.slice(0, 2).map(i => i.dishName || i.name).join(', ') || 'items';
+        const remaining = order.items && order.items.length > 2 ? ` +${order.items.length - 2} more` : '';
+        const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'recent';
+        facts.push(`  ${idx + 1}. ${items}${remaining} (₹${order.total}) - ${date}`);
+      });
+      facts.push(`- GREET THEM WARMLY and reference their order history`);
+      facts.push(`- OFFER TO REORDER their favorite dishes`);
+    }
+
+    // Current cart
+    if (cart && cart.items && cart.items.length > 0) {
+      facts.push(`\n**CURRENT CART:**`);
+      facts.push(`- ${cart.items.length} item(s) in cart`);
+      cart.items.forEach((item, idx) => {
+        facts.push(`  ${idx + 1}. ${item.name} x${item.quantity} (₹${item.price * item.quantity})`);
+      });
+      if (cart.subtotal) {
+        facts.push(`- Cart subtotal: ₹${cart.subtotal}`);
+      }
+    }
+
+    if (orderHistory.length > 0) {
+      facts.push('\n**IMPORTANT**: This is a RETURNING CUSTOMER. Do NOT ask for their phone number again. Greet them by name and reference their order history to personalize the experience.');
+    } else {
+      facts.push('\n**IMPORTANT**: Use this information without asking again. Build on what you already know.');
+    }
+
+    return facts.join('\n');
   }
 
   /**
@@ -797,6 +914,13 @@ ${configInstructions}`,
         reason: reason.toString()
       });
       session.isActive = false;
+
+      // Clear keep-alive interval
+      if (session.keepAliveInterval) {
+        clearInterval(session.keepAliveInterval);
+        session.keepAliveInterval = null;
+      }
+
       this.activeSessions.delete(sessionId);
     });
 
@@ -898,6 +1022,13 @@ ${configInstructions}`,
               text: part.text.substring(0, 100)
             });
 
+            // Track assistant response in conversation history
+            session.conversation.push({
+              role: 'model',
+              parts: [{ text: part.text }],
+              timestamp: Date.now()
+            });
+
             // Send transcription to display
             if (session.tenantId) {
               await this.displayClient.sendTranscription(
@@ -946,7 +1077,25 @@ ${configInstructions}`,
     try {
       switch (name) {
         case 'capture_customer_info':
-          // Store in session
+          // Check if customer already exists in session (returning customer)
+          if (session.orderState.customer?.phone) {
+            console.log('[VertexAILive] Customer already identified in session', {
+              name: session.orderState.customer.name,
+              phone: session.orderState.customer.phone
+            });
+
+            result = {
+              success: true,
+              message: `Customer already identified: ${session.orderState.customer.name}`,
+              customer: session.orderState.customer,
+              orderHistory: session.orderState.customerOrderHistory || [],
+              orderHistoryCount: session.orderState.customerOrderHistory?.length || 0,
+              isReturningCustomer: true
+            };
+            break;
+          }
+
+          // Store in session (new customer or first-time phone capture)
           session.orderState.customer = {
             name: args.name,
             phone: args.phone,
@@ -955,12 +1104,11 @@ ${configInstructions}`,
             confirmedAt: Date.now()
           };
 
-          // Persist to Firebase session
-          await this.persistSessionState(session);
-
-          // Upsert customer in customers collection
-          try {
-            const customerResult = await this.customerService.upsertCustomer(
+          // CRITICAL FIX: Run Firestore operations in background to prevent Vertex AI timeout
+          // These operations were blocking for 2-3 seconds, causing session to become inactive
+          Promise.all([
+            this.persistSessionState(session),
+            this.customerService.upsertCustomer(
               session.tenantId,
               {
                 phone: args.phone,
@@ -968,57 +1116,55 @@ ${configInstructions}`,
                 email: args.email,
                 deliveryAddress: args.deliveryAddress
               }
-            );
+            )
+          ]).then(async () => {
+            console.log('[VertexAILive] Customer data persisted to Firestore');
 
-            // Fetch customer's order history
-            let orderHistory = [];
-            let orderSummary = '';
+            // OPTIMIZATION: Fetch saved addresses and send via WebSocket
+            // This eliminates the need for frontend to make a separate HTTP request
             try {
-              orderHistory = await this.customerService.getCustomerOrders(
+              const customer = await this.customerService.getCustomer(
                 session.tenantId,
-                args.phone,
-                5 // Get last 5 orders
+                args.phone
               );
 
-              // Store in session for context
-              session.orderState.customerOrderHistory = orderHistory;
+              const savedAddresses = customer?.savedAddresses || [];
 
-              if (orderHistory.length > 0) {
-                orderSummary = `Customer has ${orderHistory.length} previous order(s). `;
-                orderSummary += `Recent orders: ${orderHistory.map((order, idx) => {
-                  const items = order.items?.slice(0, 3).map(i => i.dishName || i.name).join(', ') || 'items';
-                  const remaining = order.items?.length > 3 ? ` +${order.items.length - 3} more` : '';
-                  return `${idx + 1}) ${items}${remaining} (₹${order.total})`;
-                }).join('; ')}. `;
-                orderSummary += 'You can suggest items from their previous orders or help them reorder.';
-              } else {
-                orderSummary = 'This is a new customer with no previous orders.';
+              // CRITICAL FIX: Broadcast to CLIENT WebSocket (not Vertex AI WebSocket)
+              if (session.clientWs && savedAddresses.length > 0) {
+                session.clientWs.send(JSON.stringify({
+                  type: 'customer_addresses',
+                  addresses: savedAddresses,
+                  timestamp: Date.now()
+                }));
+                console.log('[VertexAILive] Sent', savedAddresses.length, 'saved addresses to client');
               }
-            } catch (historyError) {
-              console.warn('[VertexAILive] Could not fetch order history:', historyError);
-              orderSummary = 'Could not load order history.';
+            } catch (error) {
+              console.warn('[VertexAILive] Failed to fetch saved addresses:', error);
             }
+          }).catch(error => {
+            console.error('[VertexAILive] Background persist failed:', error);
+          });
 
-            await this.persistSessionState(session);
-
-            result = {
-              success: true,
-              message: `Customer info saved: ${args.name}. ${orderSummary}`,
-              customer: session.orderState.customer,
-              customerId: customerResult.customerId,
-              isNewCustomer: customerResult.isNew,
-              orderHistory: orderHistory,
-              orderHistoryCount: orderHistory.length
-            };
-          } catch (error) {
-            console.error('[VertexAILive] Error upserting customer:', error);
-            result = {
-              success: true,
-              message: `Customer info saved to session: ${args.name}`,
-              customer: session.orderState.customer,
-              warning: 'Could not persist to customer database'
-            };
+          // CRITICAL FIX: Broadcast customer update to CLIENT WebSocket (not Vertex AI WebSocket)
+          if (session.clientWs) {
+            try {
+              session.clientWs.send(JSON.stringify({
+                type: 'customer_update',
+                customer: session.orderState.customer,
+                timestamp: Date.now()
+              }));
+              console.log('[VertexAILive] Broadcasted customer update to client');
+            } catch (wsError) {
+              console.warn('[VertexAILive] Failed to broadcast customer update:', wsError.message);
+            }
           }
+
+          result = {
+            success: true,
+            message: `Customer info saved: ${args.name}.`,
+            customer: session.orderState.customer
+          };
           break;
 
         case 'show_dish_details':
@@ -1518,6 +1664,17 @@ ${configInstructions}`,
       };
     }
 
+    // Build Known Facts summary to prevent repetition
+    const knownFacts = this.buildKnownFactsSummary(session);
+
+    // Inject Known Facts into result if there are any facts to share
+    if (knownFacts) {
+      // Add context reminder to the result
+      if (typeof result === 'object' && result !== null) {
+        result._context = knownFacts;
+      }
+    }
+
     // Send function response back to Vertex AI
     const functionResponse = {
       toolResponse: {
@@ -1536,9 +1693,16 @@ ${configInstructions}`,
    * Send audio chunk to model
    */
   async sendAudio(sessionId, audioData) {
-    const session = this.activeSessions.get(sessionId);
+    let session = this.activeSessions.get(sessionId);
 
+    // DISABLED: Auto-reconnection was causing infinite error loops
+    // If session is inactive, fail immediately and let frontend handle it
     if (!session || !session.isActive) {
+      console.warn('[VertexAILive] Session not active - rejecting audio', {
+        sessionId,
+        sessionExists: !!session,
+        isActive: session?.isActive
+      });
       throw new Error(`Session ${sessionId} not active`);
     }
 
@@ -1599,6 +1763,12 @@ ${configInstructions}`,
     const session = this.activeSessions.get(sessionId);
 
     if (session) {
+      // Clear keep-alive interval
+      if (session.keepAliveInterval) {
+        clearInterval(session.keepAliveInterval);
+        session.keepAliveInterval = null;
+      }
+
       if (session.ws) {
         session.ws.close();
       }

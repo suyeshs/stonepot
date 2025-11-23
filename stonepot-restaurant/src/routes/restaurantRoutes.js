@@ -12,6 +12,9 @@ import { getFirebaseService } from '../services/FirebaseService.js';
 import { CloudflareImageService } from '../services/CloudflareImageService.js';
 import { MenuManagementService } from '../services/MenuManagementService.js';
 import { ExcelParserService } from '../services/ExcelParserService.js';
+import { OrderManagementService } from '../services/OrderManagementService.js';
+import { getCustomerService } from '../services/CustomerService.js';
+import { createOrderManagementRoutes, createRestaurantDashboardWebSocketHandler } from './orderManagementRoutes.js';
 import { config } from '../config/index.js';
 
 const router = express.Router();
@@ -43,6 +46,15 @@ const menuService = new MenuManagementService(firebaseService, cloudflareImageSe
 
 // Initialize Excel Parser Service
 const excelParserService = new ExcelParserService();
+
+// Initialize Order Management Service
+const orderManagementService = new OrderManagementService(firebaseService, {
+  restaurantName: config.restaurant?.name || 'Stonepot Restaurant',
+  kitchenPrinterEnabled: config.kitchenPrinter?.enabled || false
+});
+
+// Initialize Customer Service
+const customerService = getCustomerService(config);
 
 /**
  * Create a new ordering session
@@ -853,19 +865,307 @@ router.post('/tenants/provision', async (req, res) => {
 // ==================== ORDER & DELIVERY ENDPOINTS ====================
 
 /**
+ * Get customer's address history (for returning customers)
+ * Returns saved addresses with placeIds for quick selection
+ * GET /api/restaurant/sessions/:sessionId/address-history
+ */
+router.get('/sessions/:sessionId/address-history', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { phone } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'phone is required' });
+    }
+
+    const session = vertexAIService.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Get customer from Firestore
+    const customer = await customerService.getCustomer(session.tenantId, phone);
+
+    if (!customer) {
+      return res.json({
+        success: true,
+        addresses: []
+      });
+    }
+
+    // Return customer's saved addresses (new multi-address system)
+    let addresses = [];
+
+    // Priority 1: New savedAddresses array with labels
+    if (customer.savedAddresses && customer.savedAddresses.length > 0) {
+      addresses = customer.savedAddresses.map(addr => ({
+        formatted: addr.formatted,
+        placeId: addr.placeId || null,
+        coordinates: addr.coordinates,
+        apartment: addr.apartment,
+        landmark: addr.landmark,
+        instructions: addr.instructions,
+        city: addr.city,
+        pincode: addr.pincode,
+        label: addr.label || 'other',
+        isDefault: addr.isDefault || false,
+        requiresMigration: !addr.placeId
+      }));
+
+      console.log('[AddressHistory] Loaded', addresses.length, 'saved addresses with labels');
+    }
+    // Priority 2: Legacy single deliveryAddress (for backwards compatibility)
+    else if (customer.deliveryAddress) {
+      const hasPlaceId = !!customer.deliveryAddress.placeId;
+
+      addresses.push({
+        formatted: customer.deliveryAddress.formatted,
+        placeId: customer.deliveryAddress.placeId || null,
+        coordinates: customer.deliveryAddress.coordinates,
+        apartment: customer.deliveryAddress.apartment,
+        landmark: customer.deliveryAddress.landmark,
+        instructions: customer.deliveryAddress.instructions,
+        city: customer.deliveryAddress.city,
+        pincode: customer.deliveryAddress.pincode,
+        label: 'other', // Default label for legacy addresses
+        isDefault: true,
+        requiresMigration: !hasPlaceId
+      });
+
+      if (!hasPlaceId) {
+        console.log('[AddressHistory] Legacy address without placeId for customer:', phone);
+      }
+    }
+
+    res.json({
+      success: true,
+      addresses: addresses,
+      optimizationAvailable: addresses.some(addr => addr.placeId),
+      migrationNeeded: addresses.some(addr => addr.requiresMigration),
+      defaultAddress: addresses.find(addr => addr.isDefault) || null
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Failed to get address history:', error);
+    res.status(500).json({
+      error: 'Failed to get address history',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Migrate legacy address to include placeId (for existing customers)
+ * Uses reverse geocoding to get placeId from coordinates
+ * POST /api/restaurant/sessions/:sessionId/migrate-address
+ */
+router.post('/sessions/:sessionId/migrate-address', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { coordinates, apartment, landmark, instructions } = req.body;
+
+    if (!coordinates || !coordinates.lat || !coordinates.lng) {
+      return res.status(400).json({ error: 'coordinates are required' });
+    }
+
+    console.log('[RestaurantRoutes] Migrating legacy address', { sessionId, coordinates });
+
+    const googleMapsService = vertexAIService.googleMapsService;
+    const deliveryService = vertexAIService.deliveryService;
+
+    // Reverse geocode to get placeId
+    const reverseResult = await googleMapsService.reverseGeocode(
+      coordinates.lat,
+      coordinates.lng
+    );
+
+    // Get restaurant location
+    const restaurantLocation = {
+      lat: config.restaurant?.location?.lat || 12.9716,
+      lng: config.restaurant?.location?.lng || 77.5946
+    };
+
+    // Check delivery eligibility
+    const deliveryCheck = await deliveryService.checkDeliveryZone(
+      restaurantLocation,
+      coordinates
+    );
+
+    let feeResult = null;
+    let estimatedTime = null;
+    if (deliveryCheck.eligible) {
+      const session = vertexAIService.getSession(sessionId);
+      const cartTotal = session?.orderState?.cart?.subtotal || 0;
+
+      feeResult = deliveryService.calculateDeliveryFee(deliveryCheck.distance, cartTotal);
+      estimatedTime = deliveryService.calculateEstimatedDeliveryTime(deliveryCheck.distance, 20);
+    }
+
+    res.json({
+      success: true,
+      eligible: deliveryCheck.eligible,
+      address: {
+        formatted: reverseResult.formattedAddress,
+        coordinates: coordinates,
+        placeId: reverseResult.placeId, // Now has placeId!
+        pincode: googleMapsService.extractPincode(reverseResult.addressComponents),
+        city: googleMapsService.extractCity(reverseResult.addressComponents),
+        state: googleMapsService.extractState(reverseResult.addressComponents),
+        apartment: apartment,
+        landmark: landmark,
+        instructions: instructions
+      },
+      delivery: deliveryCheck.eligible ? {
+        distance: deliveryCheck.distance,
+        distanceText: deliveryCheck.distanceText,
+        durationText: deliveryCheck.durationText,
+        fee: feeResult.fee,
+        feeBreakdown: feeResult.breakdown,
+        isFreeDelivery: feeResult.isFree,
+        estimatedTime: estimatedTime.timeRange
+      } : null,
+      message: deliveryCheck.message,
+      migrated: true
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Address migration failed:', error);
+    res.status(500).json({
+      error: 'Failed to migrate address',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Quick address lookup using placeId (optimized for returning customers)
+ * 40% cheaper + 50% faster than full geocoding
+ * POST /api/restaurant/sessions/:sessionId/quick-address
+ */
+router.post('/sessions/:sessionId/quick-address', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { placeId, apartment, landmark, instructions, label, isDefault } = req.body;
+
+    if (!placeId) {
+      return res.status(400).json({ error: 'placeId is required' });
+    }
+
+    console.log('[RestaurantRoutes] Quick address lookup via placeId', { sessionId, placeId, label });
+
+    const session = vertexAIService.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Get services from vertexAIService
+    const googleMapsService = vertexAIService.googleMapsService;
+    const deliveryService = vertexAIService.deliveryService;
+
+    // Fast lookup using placeId (3 API credits vs 5 for geocoding)
+    const placeDetails = await googleMapsService.getPlaceDetails(placeId);
+
+    // Get restaurant location from config
+    const restaurantLocation = {
+      lat: config.restaurant?.location?.lat || 12.9716,
+      lng: config.restaurant?.location?.lng || 77.5946
+    };
+
+    // Check delivery eligibility
+    const deliveryCheck = await deliveryService.checkDeliveryZone(
+      restaurantLocation,
+      { lat: placeDetails.lat, lng: placeDetails.lng }
+    );
+
+    // Calculate delivery fee if eligible
+    let feeResult = null;
+    let estimatedTime = null;
+    if (deliveryCheck.eligible) {
+      const cartTotal = session?.orderState?.cart?.subtotal || 0;
+
+      feeResult = deliveryService.calculateDeliveryFee(
+        deliveryCheck.distance,
+        cartTotal
+      );
+
+      estimatedTime = deliveryService.calculateEstimatedDeliveryTime(
+        deliveryCheck.distance,
+        20
+      );
+    }
+
+    const addressData = {
+      formatted: placeDetails.formattedAddress,
+      coordinates: {
+        lat: placeDetails.lat,
+        lng: placeDetails.lng
+      },
+      placeId: placeId,
+      pincode: googleMapsService.extractPincode(placeDetails.addressComponents),
+      city: googleMapsService.extractCity(placeDetails.addressComponents),
+      state: googleMapsService.extractState(placeDetails.addressComponents),
+      apartment: apartment || undefined,
+      landmark: landmark || undefined,
+      instructions: instructions || undefined
+    };
+
+    // Save address to customer profile if customer exists
+    if (session.orderState?.customer?.phone) {
+      try {
+        await customerService.saveAddress(session.tenantId, session.orderState.customer.phone, {
+          ...addressData,
+          label: label || 'other',
+          isDefault: isDefault || false
+        });
+        console.log('[RestaurantRoutes] Saved address with label:', label || 'other');
+      } catch (saveError) {
+        console.error('[RestaurantRoutes] Failed to save address:', saveError);
+        // Continue with response even if save fails
+      }
+    }
+
+    res.json({
+      success: true,
+      eligible: deliveryCheck.eligible,
+      address: addressData,
+      delivery: deliveryCheck.eligible ? {
+        distance: deliveryCheck.distance,
+        distanceText: deliveryCheck.distanceText,
+        durationText: deliveryCheck.durationText,
+        fee: feeResult.fee,
+        feeBreakdown: feeResult.breakdown,
+        isFreeDelivery: feeResult.isFree,
+        estimatedTime: estimatedTime.timeRange
+      } : null,
+      message: deliveryCheck.message,
+      optimized: true // Flag to indicate this used the faster placeId lookup
+    });
+  } catch (error) {
+    console.error('[RestaurantRoutes] Quick address lookup failed:', error);
+    res.status(500).json({
+      error: 'Failed to lookup address',
+      message: error.message
+    });
+  }
+});
+
+/**
  * Geocode an address (for frontend address verification)
  * POST /api/restaurant/sessions/:sessionId/geocode-address
  */
 router.post('/sessions/:sessionId/geocode-address', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { addressString, landmark, pincode } = req.body;
+    const { addressString, apartment, landmark, pincode, instructions, label, isDefault } = req.body;
 
     if (!addressString) {
       return res.status(400).json({ error: 'addressString is required' });
     }
 
-    console.log('[RestaurantRoutes] Geocoding address', { sessionId, addressString });
+    console.log('[RestaurantRoutes] Geocoding address', { sessionId, addressString, label });
+
+    const session = vertexAIService.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
 
     // Get services from vertexAIService
     const googleMapsService = vertexAIService.googleMapsService;
@@ -895,7 +1195,6 @@ router.post('/sessions/:sessionId/geocode-address', async (req, res) => {
     let feeResult = null;
     let estimatedTime = null;
     if (deliveryCheck.eligible) {
-      const session = vertexAIService.getSession(sessionId);
       const cartTotal = session?.orderState?.cart?.subtotal || 0;
 
       feeResult = deliveryService.calculateDeliveryFee(
@@ -909,20 +1208,40 @@ router.post('/sessions/:sessionId/geocode-address', async (req, res) => {
       );
     }
 
+    const addressData = {
+      formatted: geocodeResult.formattedAddress,
+      coordinates: {
+        lat: geocodeResult.lat,
+        lng: geocodeResult.lng
+      },
+      placeId: geocodeResult.placeId,
+      pincode: googleMapsService.extractPincode(geocodeResult.addressComponents),
+      city: googleMapsService.extractCity(geocodeResult.addressComponents),
+      state: googleMapsService.extractState(geocodeResult.addressComponents),
+      apartment: apartment || undefined,
+      landmark: landmark || undefined,
+      instructions: instructions || undefined
+    };
+
+    // Save address to customer profile if customer exists
+    if (session.orderState?.customer?.phone) {
+      try {
+        await customerService.saveAddress(session.tenantId, session.orderState.customer.phone, {
+          ...addressData,
+          label: label || 'other',
+          isDefault: isDefault || false
+        });
+        console.log('[RestaurantRoutes] Saved address with label:', label || 'other');
+      } catch (saveError) {
+        console.error('[RestaurantRoutes] Failed to save address:', saveError);
+        // Continue with response even if save fails
+      }
+    }
+
     res.json({
       success: true,
       eligible: deliveryCheck.eligible,
-      address: {
-        formatted: geocodeResult.formattedAddress,
-        coordinates: {
-          lat: geocodeResult.lat,
-          lng: geocodeResult.lng
-        },
-        placeId: geocodeResult.placeId,
-        pincode: googleMapsService.extractPincode(geocodeResult.addressComponents),
-        city: googleMapsService.extractCity(geocodeResult.addressComponents),
-        state: googleMapsService.extractState(geocodeResult.addressComponents)
-      },
+      address: addressData,
       delivery: deliveryCheck.eligible ? {
         distance: deliveryCheck.distance,
         distanceText: deliveryCheck.distanceText,
@@ -940,6 +1259,79 @@ router.post('/sessions/:sessionId/geocode-address', async (req, res) => {
       error: 'Failed to geocode address',
       message: error.message
     });
+  }
+});
+
+/**
+ * Sync customer information to session
+ * Used by manual checkout flow to update session with customer data
+ * POST /api/restaurant/sessions/:sessionId/customer
+ */
+router.post('/sessions/:sessionId/customer', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { name, phone, email } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Name and phone are required' });
+    }
+
+    console.log('[RestaurantRoutes] Syncing customer to session', { sessionId, name, phone });
+
+    const session = vertexAIService.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Update session customer data
+    session.orderState.customer = {
+      name,
+      phone,
+      email: email || null,
+      deliveryAddress: session.orderState.customer?.deliveryAddress || null,
+      confirmedAt: Date.now()
+    };
+
+    // Broadcast customer update to WebSocket client (single source of truth)
+    if (session.ws) {
+      try {
+        session.ws.send(JSON.stringify({
+          type: 'customer_update',
+          customer: session.orderState.customer,
+          timestamp: Date.now()
+        }));
+        console.log('[RestaurantRoutes] Broadcasted customer update to WebSocket client');
+      } catch (wsError) {
+        console.warn('[RestaurantRoutes] Failed to broadcast customer update:', wsError.message);
+      }
+    }
+
+    // Save/update customer in Firestore
+    try {
+      await customerService.upsertCustomer(session.tenantId, {
+        name,
+        phone,
+        email: email || null
+      });
+
+      console.log('[RestaurantRoutes] Customer synced to session and saved to Firestore', { phone });
+
+      res.json({
+        success: true,
+        customer: session.orderState.customer
+      });
+    } catch (error) {
+      console.error('[RestaurantRoutes] Failed to save customer:', error);
+      // Still return success since session was updated
+      res.json({
+        success: true,
+        customer: session.orderState.customer,
+        warning: 'Customer saved to session but Firestore sync failed'
+      });
+    }
+  } catch (error) {
+    console.error('[RestaurantRoutes] Error syncing customer:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1202,6 +1594,10 @@ router.post('/webhooks/razorpay', async (req, res) => {
   }
 });
 
+// ==================== ORDER MANAGEMENT ENDPOINTS ====================
+// Mount order management routes at /manage
+router.use('/manage', createOrderManagementRoutes(orderManagementService));
+
 /**
  * Setup WebSocket handler for audio streaming
  */
@@ -1210,16 +1606,26 @@ export function setupWebSocketServer(server) {
     noServer: true
   });
 
+  // Create WebSocket handler for restaurant dashboard
+  const dashboardWebSocketHandler = createRestaurantDashboardWebSocketHandler(orderManagementService);
+
   // Handle upgrade requests manually
   server.on('upgrade', (request, socket, head) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
 
-    // Check if path matches /ws/restaurant/*
-    if (pathname.startsWith('/ws/restaurant/')) {
+    // Check if path matches /ws/restaurant/* (for voice ordering)
+    if (pathname.startsWith('/ws/restaurant/') && !pathname.startsWith('/ws/restaurant-dashboard/')) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
-    } else {
+    }
+    // Check if path matches /ws/restaurant-dashboard/* (for order management dashboard)
+    else if (pathname.startsWith('/ws/restaurant-dashboard/')) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        dashboardWebSocketHandler(ws, request);
+      });
+    }
+    else {
       socket.destroy();
     }
   });
@@ -1233,6 +1639,12 @@ export function setupWebSocketServer(server) {
       // Check if session exists, create if not
       let session = vertexAIService.getSession(sessionId);
 
+      // Store client WebSocket reference (even if session exists)
+      if (session) {
+        session.clientWs = ws;
+        console.log('[WebSocket] Updated client WebSocket for existing session');
+      }
+
       if (!session) {
         console.log('[WebSocket] Creating new Vertex AI session', { sessionId });
 
@@ -1241,6 +1653,38 @@ export function setupWebSocketServer(server) {
         const tenantId = url.searchParams.get('tenantId') || 'demo-restaurant';
         const language = url.searchParams.get('language') || 'en';
         const userId = url.searchParams.get('userId') || 'demo-user';
+        const customerPhone = url.searchParams.get('customerPhone'); // For returning customers
+
+        // Pre-load customer context if phone provided (returning customer)
+        let customerContext = null;
+        if (customerPhone) {
+          try {
+            console.log('[WebSocket] Returning customer detected, loading context', { customerPhone });
+
+            // Lookup existing customer
+            const customer = await customerService.getCustomer(tenantId, customerPhone);
+            if (customer) {
+              // Fetch order history
+              const orderHistory = await customerService.getCustomerOrders(
+                tenantId,
+                customerPhone,
+                5 // last 5 orders
+              );
+
+              customerContext = {
+                customer,
+                orderHistory
+              };
+
+              console.log('[WebSocket] Customer context loaded', {
+                name: customer.name,
+                orderCount: orderHistory.length
+              });
+            }
+          } catch (error) {
+            console.warn('[WebSocket] Could not load customer context:', error.message);
+          }
+        }
 
         // Try to restore existing session data from Firebase
         const restoredData = await vertexAIService.restoreSessionState(sessionId, firebaseService);
@@ -1250,13 +1694,17 @@ export function setupWebSocketServer(server) {
         const menuItems = await menuService.listMenuItems(tenantId);
         console.log('[WebSocket] Loaded menu items', { count: menuItems.length });
 
-        // Create Vertex AI session with menu context
+        // Create Vertex AI session with menu context and customer context
         session = await vertexAIService.createSession(sessionId, {
           tenantId,
           language,
           userId,
-          menuItems  // Include menu in context
+          menuItems,  // Include menu in context
+          customerContext  // Include returning customer context
         });
+
+        // CRITICAL: Store client WebSocket reference for broadcasting messages
+        session.clientWs = ws;
 
         // Inject services into session for order management
         vertexAIService.setSessionServices(sessionId, menuService, firebaseService);
@@ -1346,11 +1794,21 @@ export function setupWebSocketServer(server) {
           }
         } catch (error) {
           console.error('[WebSocket] Error handling message:', error);
-          ws.send(JSON.stringify({
-            type: 'error',
-            error: 'Failed to process message',
-            message: error.message
-          }));
+
+          // Session is not active - fail immediately (auto-reconnection disabled)
+          if (error.message && error.message.includes('not active')) {
+            ws.send(JSON.stringify({
+              type: 'session_reconnect_failed',
+              error: 'Session not active',
+              message: 'Session expired. Please start a new conversation.'
+            }));
+          } else {
+            ws.send(JSON.stringify({
+              type: 'error',
+              error: 'Failed to process message',
+              message: error.message
+            }));
+          }
         }
       });
 
@@ -1379,7 +1837,9 @@ export function setupWebSocketServer(server) {
     }
   });
 
-  console.log('[WebSocket] Server initialized for restaurant audio streaming');
+  console.log('[WebSocket] Server initialized for:');
+  console.log('  - Restaurant audio streaming (/ws/restaurant/:sessionId)');
+  console.log('  - Restaurant dashboard real-time updates (/ws/restaurant-dashboard/:tenantId)');
 
   return wss;
 }

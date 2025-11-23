@@ -14,6 +14,7 @@ import { Toast, ToastMessage } from './components/Toast';
 import Menu from './components/Menu';
 import { menuStore } from './stores/menuStore';
 import { cartStore } from './stores/cartStore';
+import { orderStore } from './stores/orderStore';
 import { collaborativeOrderStore } from './stores/collaborativeOrderStore';
 import { menuItems } from './data/menuData';
 import { observer } from 'mobx-react-lite';
@@ -46,6 +47,23 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
+
+  // Load customer phone from localStorage on mount (returning customer)
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('stonepot_customer_phone');
+    if (savedPhone) {
+      setCustomerPhone(savedPhone);
+      console.log('[App] Loaded returning customer phone:', savedPhone);
+    }
+  }, []);
+
+  // Save customer phone to localStorage when it changes
+  useEffect(() => {
+    if (customerPhone) {
+      localStorage.setItem('stonepot_customer_phone', customerPhone);
+      console.log('[App] Saved customer phone to localStorage:', customerPhone);
+    }
+  }, [customerPhone]);
 
   // Audio visualization
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(32).fill(0));
@@ -344,7 +362,15 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
       setSessionInfo(data);
 
       // Initialize Vertex AI Live service
-      const wsUrl = `${apiUrl.replace('https://', 'wss://').replace('http://', 'ws://')}${data.websocketUrl}`;
+      let wsUrl = `${apiUrl.replace('https://', 'wss://').replace('http://', 'ws://')}${data.websocketUrl}`;
+
+      // Add customerPhone to URL if available (for returning customers)
+      if (customerPhone) {
+        const separator = wsUrl.includes('?') ? '&' : '?';
+        wsUrl += `${separator}customerPhone=${encodeURIComponent(customerPhone)}`;
+        console.log('[Restaurant] Adding returning customer phone to WebSocket URL');
+      }
+
       vertexAILiveServiceRef.current = new VertexAILiveService(wsUrl);
 
       // Set up audio playback callback
@@ -358,6 +384,20 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
         console.log('[Restaurant] Message:', message.type);
         if (message.type === 'session_ready') {
           setSessionStatus('listening');
+        } else if (message.type === 'session_reconnecting') {
+          console.log('[Restaurant] Session reconnecting...');
+          setSessionStatus('thinking');
+          showToast('Reconnecting session...', 'info');
+        } else if (message.type === 'session_reconnect_failed') {
+          console.error('[Restaurant] Session reconnection failed');
+          setSessionStatus('idle');
+          showToast('Session expired. Please start a new conversation.', 'error');
+
+          // CRITICAL: End the session to stop the audio loop
+          endSession();
+        } else if (message.type === 'error') {
+          console.error('[Restaurant] Error:', message.message);
+          showToast(message.message || 'An error occurred', 'error');
         }
       });
 
@@ -398,6 +438,29 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
           } else if (continueOrderingPhrases.some(phrase => text.includes(phrase)) && cartStore.itemCount > 0) {
             // User is adding more items - keep cart visible but with auto-hide
             showCartWithAutoHide(12000); // 12 seconds for multi-item ordering
+          }
+        } else if (update.type === 'customer_update') {
+          // SINGLE SOURCE OF TRUTH: Backend broadcasts customer data
+          console.log('[Restaurant] Customer update from backend:', update.customer);
+          if (update.customer) {
+            orderStore.setCustomer({
+              name: update.customer.name,
+              phone: update.customer.phone,
+              email: update.customer.email || undefined
+            });
+            // Persist phone for returning customer detection
+            if (update.customer.phone) {
+              setCustomerPhone(update.customer.phone);
+              localStorage.setItem('stonepot_customer_phone', update.customer.phone);
+            }
+          }
+        } else if (update.type === 'customer_addresses') {
+          // OPTIMIZATION: Backend sends saved addresses via WebSocket
+          // This eliminates the need for HTTP request in AddressEntry component
+          console.log('[Restaurant] Customer addresses from backend:', update.addresses?.length || 0);
+          if (update.addresses && update.addresses.length > 0) {
+            // Store addresses in sessionStorage for AddressEntry to pick up
+            sessionStorage.setItem('stonepot_saved_addresses', JSON.stringify(update.addresses));
           }
         } else {
           // Protected display update with minimum display duration for critical flows
@@ -637,6 +700,11 @@ const RestaurantOrderingApp = observer(function RestaurantOrderingApp() {
       } else if (type === 'audio-data') {
         // REVERTED: Direct audio sending without VAD (VAD will be fixed later)
         if (!vertexAILiveServiceRef.current?.isActive()) {
+          return;
+        }
+
+        // Don't send audio when OrderFlow is open (user is checking out)
+        if (showOrderFlow) {
           return;
         }
 
