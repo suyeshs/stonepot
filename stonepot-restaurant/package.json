@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.7.0",
-    "@google/generative-ai": "^0.21.0",
+    "@google/generative-ai": "^0.24.1",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "capnweb": "^0.2.0",
     "cors": "^2.8.5",

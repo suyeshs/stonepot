@@ -4,7 +4,8 @@
  * Supports: PDF, Excel, Word, Images (no template required)
  */
 
-import { GoogleGenerativeAI, GoogleAIFileManager } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { getFirebaseService } from './FirebaseService.js';
 
 export class SmartMenuParserService {
