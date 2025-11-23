@@ -2,10 +2,10 @@
  * File Search Service - TypeScript Implementation
  * Provides menu retrieval using Google Gemini File Search for scalable, token-efficient RAG
  *
- * Updated for @google/genai SDK v1.30.0+ with proper TypeScript types
+ * Updated for @google/generative-ai SDK with proper TypeScript types
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import NodeCache from 'node-cache';
 
 interface FileSearchConfig {
@@ -34,7 +34,7 @@ export class FileSearchService {
   private apiKey?: string;
   private stores: Record<string, string>;
   private cache: NodeCache;
-  private genAI: GoogleGenAI | null = null;
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor(config: FileSearchConfig) {
     this.enabled = config.fileSearch?.enabled || false;
@@ -54,7 +54,7 @@ export class FileSearchService {
     }
 
     if (this.enabled && this.apiKey) {
-      this.genAI = new GoogleGenAI({ apiKey: this.apiKey });
+      this.genAI = new GoogleGenerativeAI(this.apiKey);
       console.log('[FileSearchService] Initialized with File Search stores:', Object.keys(this.stores));
     } else {
       console.log('[FileSearchService] File Search disabled - using static menu fallback');
