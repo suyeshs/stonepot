@@ -240,6 +240,122 @@ export class CloudflareImageService {
   isConfigured() {
     return !!(this.accountId && this.apiToken && this.accountHash);
   }
+
+  /**
+   * Clean filename for fuzzy matching
+   * Removes extensions, special chars, numbers
+   * @param {string} filename - Original filename
+   * @returns {string} Cleaned name
+   */
+  cleanFilename(filename) {
+    return filename
+      .replace(/\.(jpe?g|png|webp|heic|gif)$/i, '') // Remove extension
+      .replace(/[-_\s\d\(\)\[\]]/g, ' ')             // Replace separators with space
+      .replace(/\s+/g, ' ')                          // Collapse multiple spaces
+      .trim()
+      .toLowerCase();
+  }
+
+  /**
+   * Normalize string for matching (remove all non-alphanumeric)
+   * @param {string} str - String to normalize
+   * @returns {string} Normalized string
+   */
+  normalizeForMatching(str) {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  /**
+   * Fuzzy match two strings
+   * @param {string} a - First string
+   * @param {string} b - Second string
+   * @returns {boolean} True if strings match
+   */
+  fuzzyMatch(a, b) {
+    const normA = this.normalizeForMatching(a);
+    const normB = this.normalizeForMatching(b);
+
+    // Exact match after normalization
+    if (normA === normB) return true;
+
+    // One contains the other
+    if (normA.includes(normB) || normB.includes(normA)) return true;
+
+    // Check if majority of characters match (70% threshold)
+    const longer = normA.length > normB.length ? normA : normB;
+    const shorter = normA.length > normB.length ? normB : normA;
+
+    if (shorter.length === 0) return false;
+
+    let matchCount = 0;
+    for (const char of shorter) {
+      if (longer.includes(char)) matchCount++;
+    }
+
+    return (matchCount / shorter.length) >= 0.7;
+  }
+
+  /**
+   * Match image filename to menu items
+   * Supports multi-language matching
+   * @param {string} filename - Image filename
+   * @param {Array} menuItems - Array of menu items with name/nameLocal
+   * @returns {Object|null} Matched menu item or null
+   */
+  matchImageToMenuItem(filename, menuItems) {
+    const cleanName = this.cleanFilename(filename);
+
+    console.log('[CloudflareImageService] Matching image', {
+      filename,
+      cleanName,
+      menuItemCount: menuItems.length
+    });
+
+    // Try exact and fuzzy matching
+    for (const item of menuItems) {
+      // Match against English name
+      if (this.fuzzyMatch(cleanName, item.name)) {
+        console.log('[CloudflareImageService] Matched to English name', {
+          filename,
+          matchedItem: item.name
+        });
+        return item;
+      }
+
+      // Match against local name if available
+      if (item.nameLocal && this.fuzzyMatch(cleanName, item.nameLocal)) {
+        console.log('[CloudflareImageService] Matched to local name', {
+          filename,
+          matchedItem: item.name,
+          localName: item.nameLocal
+        });
+        return item;
+      }
+    }
+
+    console.log('[CloudflareImageService] No match found for', { filename });
+    return null;
+  }
+
+  /**
+   * Batch match multiple images to menu items
+   * @param {Array} files - Array of {filename, buffer} objects
+   * @param {Array} menuItems - Array of menu items
+   * @returns {Array} Array of {file, matchedItem, confidence}
+   */
+  batchMatchImages(files, menuItems) {
+    return files.map(file => {
+      const matched = this.matchImageToMenuItem(file.filename, menuItems);
+      return {
+        filename: file.filename,
+        buffer: file.buffer,
+        matchedItem: matched,
+        matched: !!matched
+      };
+    });
+  }
 }
 
 export default CloudflareImageService;

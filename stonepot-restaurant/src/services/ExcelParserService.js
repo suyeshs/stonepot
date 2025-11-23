@@ -44,21 +44,33 @@ export class ExcelParserService {
 
   /**
    * Transform Excel row to menu item object
-   * Supports flexible column names
+   * Supports flexible column names + GLOBAL FIELDS
    */
   transformRow(row) {
     // Helper functions for flexible column name matching
     const getName = () => {
-      return row['Dish Name'] || row['Name'] || row.name || row['Item Name'];
+      return row['Dish Name'] || row['Item Name'] || row['Name'] || row.name;
+    };
+
+    const getNameLocal = () => {
+      return row['Name (Local Script)'] || row['Name Local'] || row.nameLocal || null;
     };
 
     const getDescription = () => {
       return row['Description'] || row.description || row['Dish Description'] || '';
     };
 
+    const getDescriptionLocal = () => {
+      return row['Description (Local)'] || row['Description Local'] || row.descriptionLocal || null;
+    };
+
     const getPrice = () => {
       const price = row['Price'] || row.price || row['Cost'] || 0;
       return parseFloat(price);
+    };
+
+    const getCurrency = () => {
+      return row['Currency'] || row.currency || 'INR';
     };
 
     const getCategory = () => {
@@ -67,7 +79,49 @@ export class ExcelParserService {
     };
 
     const getSubcategory = () => {
-      return row['Subcategory'] || row.subcategory || row['Sub Category'] || null;
+      return row['Subcategory'] || row['Sub Category'] || row.subcategory || null;
+    };
+
+    // Dietary flags (global fields)
+    const getIsVeg = () => {
+      const veg = row['Veg'] || row['Is Veg'] || row.isVeg || '';
+      return veg === 'Yes' || veg === 'yes' || veg === true || veg === 'TRUE';
+    };
+
+    const getIsVegan = () => {
+      const vegan = row['Vegan'] || row['Is Vegan'] || row.isVegan || '';
+      return vegan === 'Yes' || vegan === 'yes' || vegan === true || vegan === 'TRUE';
+    };
+
+    const getIsHalal = () => {
+      const halal = row['Halal'] || row['Is Halal'] || row.isHalal || '';
+      return halal === 'Yes' || halal === 'yes' || halal === true || halal === 'TRUE';
+    };
+
+    const getIsKosher = () => {
+      const kosher = row['Kosher'] || row['Is Kosher'] || row.isKosher || '';
+      return kosher === 'Yes' || kosher === 'yes' || kosher === true || kosher === 'TRUE';
+    };
+
+    const getContainsGluten = () => {
+      const gluten = row['Contains Gluten'] || row['Gluten Free'] || row.containsGluten || '';
+      if (String(gluten).toLowerCase() === 'no' || String(gluten).toLowerCase() === 'false') return false;
+      return gluten === 'Yes' || gluten === 'yes' || gluten === true || gluten === 'TRUE';
+    };
+
+    const getContainsDairy = () => {
+      const dairy = row['Contains Dairy'] || row['Dairy'] || row.containsDairy || '';
+      return dairy === 'Yes' || dairy === 'yes' || dairy === true || dairy === 'TRUE';
+    };
+
+    const getContainsNuts = () => {
+      const nuts = row['Contains Nuts'] || row['Nuts'] || row.containsNuts || '';
+      return nuts === 'Yes' || nuts === 'yes' || nuts === true || nuts === 'TRUE';
+    };
+
+    const getContainsShellfish = () => {
+      const shellfish = row['Contains Shellfish'] || row['Shellfish'] || row.containsShellfish || '';
+      return shellfish === 'Yes' || shellfish === 'yes' || shellfish === true || shellfish === 'TRUE';
     };
 
     const getAllergens = () => {
@@ -82,8 +136,9 @@ export class ExcelParserService {
     };
 
     const getSpiceLevel = () => {
-      const spice = row['Spice Level'] || row.spiceLevel || row['Spice'] || 'medium';
-      return spice.toLowerCase();
+      const spice = row['Spice Level'] || row.spiceLevel || row['Spice'] || 0;
+      const level = parseInt(spice) || 0;
+      return Math.min(Math.max(level, 0), 5); // 0-5 range
     };
 
     const getPreparationTime = () => {
@@ -92,7 +147,56 @@ export class ExcelParserService {
     };
 
     const getServingSize = () => {
-      return row['Serving Size'] || row.servingSize || row['Serves'] || 'Serves 1';
+      return row['Serving Size'] || row['Portion Size'] || row.servingSize || row.portionSize || 'Serves 1';
+    };
+
+    const getCalories = () => {
+      const cal = row['Calories'] || row.calories || 0;
+      return parseInt(cal) || 0;
+    };
+
+    const getVariants = () => {
+      const variants = row['Variants'] || row.variants || '';
+      if (!variants) return [];
+      try {
+        // Try JSON parse first
+        if (typeof variants === 'string' && variants.startsWith('[')) {
+          return JSON.parse(variants);
+        }
+        // Otherwise parse as "Name:Price, Name:Price"
+        return variants.split(',').map(v => {
+          const [name, priceAdj] = v.split(':');
+          return { name: name?.trim(), priceAdjustment: parseFloat(priceAdj) || 0 };
+        }).filter(v => v.name);
+      } catch (e) {
+        return [];
+      }
+    };
+
+    const getAddons = () => {
+      const addons = row['Addons'] || row['Add-ons'] || row.addons || '';
+      if (!addons) return [];
+      try {
+        if (typeof addons === 'string' && addons.startsWith('[')) {
+          return JSON.parse(addons);
+        }
+        return addons.split(',').map(a => {
+          const [name, price] = a.split(':');
+          return { name: name?.trim(), price: parseFloat(price) || 0 };
+        }).filter(a => a.name);
+      } catch (e) {
+        return [];
+      }
+    };
+
+    const getIsPopular = () => {
+      const popular = row['Popular'] || row['Is Popular'] || row.isPopular || '';
+      return popular === 'Yes' || popular === 'yes' || popular === true || popular === 'TRUE';
+    };
+
+    const getIsChefSpecial = () => {
+      const special = row['Chef Special'] || row['Is Chef Special'] || row.isChefSpecial || '';
+      return special === 'Yes' || special === 'yes' || special === true || special === 'TRUE';
     };
 
     const getAvailable = () => {
@@ -116,18 +220,41 @@ export class ExcelParserService {
       throw new Error(`Invalid price for ${name}: ${price}`);
     }
 
-    // Build menu item object
+    // Build menu item object with GLOBAL FIELDS
     return {
+      // Core fields
       name: name.trim(),
+      nameLocal: getNameLocal(),
       description: getDescription().trim(),
+      descriptionLocal: getDescriptionLocal(),
       price: price,
+      currency: getCurrency(),
       category: getCategory(),
       subcategory: getSubcategory(),
+
+      // Dietary flags
+      isVeg: getIsVeg(),
+      isVegan: getIsVegan(),
+      isHalal: getIsHalal(),
+      isKosher: getIsKosher(),
+      containsGluten: getContainsGluten(),
+      containsDairy: getContainsDairy(),
+      containsNuts: getContainsNuts(),
+      containsShellfish: getContainsShellfish(),
       allergens: getAllergens(),
       dietaryTags: getDietaryTags(),
+
+      // Additional metadata
       spiceLevel: getSpiceLevel(),
       preparationTime: getPreparationTime(),
       servingSize: getServingSize(),
+      calories: getCalories(),
+      variants: getVariants(),
+      addons: getAddons(),
+      isPopular: getIsPopular(),
+      isChefSpecial: getIsChefSpecial(),
+
+      // Availability
       available: getAvailable(),
       imageUrl: getImageUrl()
     };
@@ -206,52 +333,126 @@ export class ExcelParserService {
   }
 
   /**
-   * Generate Excel template for menu import
+   * Generate Excel template for menu import (GLOBAL VERSION)
    */
   generateTemplate() {
     const headers = [
-      'Dish Name',
+      'Item Name',
+      'Name (Local Script)',
       'Description',
+      'Description (Local)',
       'Price',
+      'Currency',
       'Category',
-      'Subcategory',
+      'Sub Category',
+      'Veg',
+      'Vegan',
+      'Halal',
+      'Kosher',
+      'Contains Gluten',
+      'Contains Dairy',
+      'Contains Nuts',
+      'Contains Shellfish',
       'Allergens',
       'Dietary Tags',
-      'Spice Level',
+      'Spice Level (0-5)',
       'Preparation Time',
-      'Serving Size',
-      'Available',
-      'Image URL'
+      'Portion Size',
+      'Calories',
+      'Variants',
+      'Addons',
+      'Popular',
+      'Chef Special',
+      'Available'
     ];
 
     const sampleData = [
       [
-        'Butter Chicken',
-        'Creamy tomato curry with tender chicken pieces',
-        450,
-        'main_course',
-        'curry',
-        'dairy, nuts',
-        'non-vegetarian, gluten-free',
-        'medium',
-        '20-25 minutes',
-        'Serves 1',
+        'Margherita Pizza',
+        'مارغريتا',
+        'Classic Italian pizza with tomato, mozzarella, basil',
+        'بيتزا إيطالية كلاسيكية',
+        12.99,
+        'USD',
+        'pizza',
+        'vegetarian',
         'Yes',
-        ''
-      ],
-      [
-        'Paneer Tikka',
-        'Grilled cottage cheese marinated in spices',
-        350,
-        'appetizer',
-        'tandoor',
+        'No',
+        'Yes',
+        'No',
+        'No',
+        'Yes',
+        'No',
+        'No',
         'dairy',
         'vegetarian',
-        'mild',
+        1,
         '15-20 minutes',
-        'Serves 1-2',
+        '12 inch',
+        850,
+        'Large:+3.00, Small:-2.00',
+        'Extra Cheese:1.50',
         'Yes',
-        ''
+        'Yes',
+        'Yes'
+      ],
+      [
+        'Pandi Curry',
+        'ಪಂದಿ ಕರಿ',
+        'Traditional Coorgi pork curry with kachampuli',
+        'ಕಚ್ಚಂಪುಳಿ ಜೊತೆ ಸಾಂಪ್ರದಾಯಿಕ ಕೊಡಗು ಹಂದಿ ಮಾಂಸ ಕರಿ',
+        350,
+        'INR',
+        'main_course',
+        'curry',
+        'No',
+        'No',
+        'No',
+        'No',
+        'No',
+        'No',
+        'No',
+        'No',
+        '',
+        'non-vegetarian, spicy',
+        3,
+        '25-30 minutes',
+        'Serves 2',
+        1100,
+        'Half:-100',
+        'Raita:50',
+        'Yes',
+        'Yes',
+        'Yes'
+      ],
+      [
+        'Tonkotsu Ramen',
+        '豚骨ラーメン',
+        'Rich pork bone broth ramen',
+        '濃厚豚骨スープのラーメン',
+        1400,
+        'JPY',
+        'ramen',
+        '',
+        'No',
+        'No',
+        'No',
+        'No',
+        'Yes',
+        'No',
+        'No',
+        'No',
+        'gluten, soy',
+        'non-vegetarian',
+        2,
+        '20 minutes',
+        'Full bowl',
+        920,
+        '',
+        'Extra Noodles:+200, Chashu:+300',
+        'Yes',
+        'Yes',
+        'Yes'
       ]
     ];
 
